@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "DrinkedInn",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["/Users/rahulmanghnani/Downloads/drinkeden/server/index.js"],
+      "port": 4000,
+      "autoPort": false,
+      "env": {
+        "NODE_ENV": "production",
+        "PORT": "4000"
+      }
+    },
+    {
+      "name": "DrinkedInn Promo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "/Users/rahulmanghnani/Downloads/drinkeden/promo", "-p", "5500", "--no-clipboard"],
+      "port": 5500,
+      "autoPort": false
+    }
+  ]
+}

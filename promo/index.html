@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>DrinkedInn — Promo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Inter:wght@300;400;600;700&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: #0a0a0a;
+    width: 1920px; height: 1080px;
+    overflow: hidden;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* ── video background ─────────────────────────────── */
+  #bg-video {
+    position: fixed; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 1s;
+    z-index: 0;
+  }
+
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.72);
+    z-index: 1;
+  }
+
+  /* ── slides ───────────────────────────────────────── */
+  .slide {
+    position: fixed; inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+  .slide.active { opacity: 1; pointer-events: all; }
+
+  /* ── progress bar ─────────────────────────────────── */
+  #progress-bar {
+    position: fixed; bottom: 0; left: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #f5a623, #ffcc5c);
+    width: 0%;
+    z-index: 100;
+    transition: width linear;
+  }
+
+  /* ── slide counter ────────────────────────────────── */
+  #counter {
+    position: fixed; bottom: 24px; right: 32px;
+    color: rgba(255,255,255,0.3);
+    font-size: 13px;
+    z-index: 100;
+    font-family: 'Inter', sans-serif;
+    letter-spacing: 2px;
+  }
+
+  /* ── typography ───────────────────────────────────── */
+  .headline {
+    font-family: 'Playfair Display', serif;
+    font-weight: 900;
+    font-size: 96px;
+    line-height: 1.05;
+    color: #ffffff;
+    text-align: center;
+    letter-spacing: -1px;
+  }
+  .headline.amber { color: #f5a623; }
+  .headline.huge { font-size: 130px; }
+  .headline.small { font-size: 64px; }
+
+  .subtext {
+    font-family: 'Inter', sans-serif;
+    font-size: 28px;
+    color: rgba(255,255,255,0.65);
+    text-align: center;
+    font-weight: 300;
+    margin-top: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .tag {
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    color: #f5a623;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+
+  /* ── animations ───────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity:0; transform: translateY(40px); }
+    to   { opacity:1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity:0; }
+    to   { opacity:1; }
+  }
+  @keyframes scaleIn {
+    from { opacity:0; transform: scale(0.85); }
+    to   { opacity:1; transform: scale(1); }
+  }
+  @keyframes slideRight {
+    from { opacity:0; transform: translateX(-60px); }
+    to   { opacity:1; transform: translateX(0); }
+  }
+  @keyframes typewriter {
+    from { width:0; }
+    to   { width:100%; }
+  }
+  @keyframes blink { 50% { border-color: transparent; } }
+  @keyframes glowPulse {
+    0%,100% { text-shadow: 0 0 40px rgba(245,166,35,0.4); }
+    50%     { text-shadow: 0 0 80px rgba(245,166,35,0.9), 0 0 120px rgba(245,166,35,0.4); }
+  }
+  @keyframes lineGrow {
+    from { width:0; }
+    to   { width:200px; }
+  }
+  @keyframes wordPop {
+    from { opacity:0; transform: translateY(20px) scale(0.9); }
+    to   { opacity:1; transform: translateY(0) scale(1); }
+  }
+
+  .anim-fadeUp   { animation: fadeUp   0.9s ease forwards; }
+  .anim-fadeIn   { animation: fadeIn   1.0s ease forwards; }
+  .anim-scaleIn  { animation: scaleIn  0.8s ease forwards; }
+  .anim-slideRight { animation: slideRight 0.8s ease forwards; }
+
+  .delay-1 { animation-delay: 0.3s; opacity:0; }
+  .delay-2 { animation-delay: 0.7s; opacity:0; }
+  .delay-3 { animation-delay: 1.1s; opacity:0; }
+  .delay-4 { animation-delay: 1.5s; opacity:0; }
+  .delay-5 { animation-delay: 1.9s; opacity:0; }
+
+  /* ── decorative line ──────────────────────────────── */
+  .gold-line {
+    width: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #f5a623, #ffcc5c);
+    margin: 24px auto;
+    border-radius: 2px;
+    animation: lineGrow 1s ease forwards;
+  }
+
+  /* ── word-by-word ─────────────────────────────────── */
+  .word { display:inline-block; opacity:0; }
+
+  /* ── slide-specific styles ────────────────────────── */
+
+  /* S1 — pure black */
+  #s1 { background: #000; }
+  #s1 .question {
+    font-family: 'Playfair Display', serif;
+    font-size: 56px;
+    color: rgba(255,255,255,0.9);
+    text-align: center;
+    font-weight: 400;
+    font-style: italic;
+    max-width: 900px;
+    line-height: 1.5;
+  }
+
+  /* S2 — strike-through words */
+  #s2 { background: #0a0a0a; }
+  .buzzword {
+    font-family: 'Inter', sans-serif;
+    font-size: 48px;
+    color: rgba(255,255,255,0.4);
+    text-decoration: line-through;
+    text-decoration-color: #ef4444;
+    text-decoration-thickness: 3px;
+    display: block;
+    text-align: center;
+    margin: 12px 0;
+  }
+  .buzzword.no-strike { color: #f5a623; text-decoration: none; font-weight: 700; }
+
+  /* S3 — reveal */
+  #s3 {
+    background: radial-gradient(ellipse at center, #1a0f00 0%, #000 70%);
+  }
+
+  /* S4 — split screen feel */
+  #s4 { background: #050505; }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+    max-width: 1100px;
+    margin-top: 40px;
+  }
+  .feature-card {
+    background: rgba(245,166,35,0.06);
+    border: 1px solid rgba(245,166,35,0.2);
+    border-radius: 20px;
+    padding: 36px 40px;
+    opacity: 0;
+  }
+  .feature-card .icon { font-size: 48px; margin-bottom: 16px; }
+  .feature-card .title {
+    font-family: 'Inter', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 8px;
+  }
+  .feature-card .desc {
+    font-size: 16px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.6;
+  }
+
+  /* S5 — stats */
+  #s5 { background: linear-gradient(135deg, #0a0500 0%, #1a0a00 100%); }
+  .stats-row {
+    display: flex;
+    gap: 80px;
+    margin-top: 50px;
+  }
+  .stat {
+    text-align: center;
+    opacity: 0;
+  }
+  .stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 80px;
+    font-weight: 900;
+    color: #f5a623;
+    animation: glowPulse 3s ease infinite;
+  }
+  .stat-label {
+    font-size: 18px;
+    color: rgba(255,255,255,0.5);
+    margin-top: 8px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* S6 — manifesto */
+  #s6 { background: #000; }
+  .manifesto-line {
+    font-family: 'Inter', sans-serif;
+    font-size: 36px;
+    color: rgba(255,255,255,0.85);
+    text-align: center;
+    display: block;
+    margin: 16px 0;
+    font-weight: 300;
+    opacity: 0;
+  }
+  .manifesto-line span { color: #f5a623; font-weight: 700; }
+
+  /* S7 — CTA */
+  #s7 {
+    background: radial-gradient(ellipse at center, #1a0a00 0%, #000 60%);
+  }
+  .cta-logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 110px;
+    font-weight: 900;
+    color: #f5a623;
+    animation: glowPulse 2s ease infinite;
+    letter-spacing: -2px;
+  }
+  .cta-domain {
+    font-family: 'Inter', sans-serif;
+    font-size: 32px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 16px;
+    letter-spacing: 3px;
+  }
+  .cta-btn {
+    margin-top: 40px;
+    background: linear-gradient(135deg, #f5a623, #ffcc5c);
+    border: none;
+    border-radius: 60px;
+    padding: 20px 60px;
+    font-size: 22px;
+    font-weight: 700;
+    color: #000;
+    letter-spacing: 1px;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .tagline-bottom {
+    position: fixed;
+    bottom: 48px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 15px;
+    color: rgba(255,255,255,0.25);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'Inter', sans-serif;
+    white-space: nowrap;
+  }
+
+  /* ── particle canvas ──────────────────────────────── */
+  #particles {
+    position: fixed; inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- Ambient particle canvas -->
+<canvas id="particles"></canvas>
+
+<!-- Dark overlay -->
+<div class="overlay"></div>
+
+<!-- Progress bar -->
+<div id="progress-bar"></div>
+<div id="counter">01 / 07</div>
+
+<!-- ═══ SLIDE 1 — The Hook ═══════════════════════════════ -->
+<div class="slide active" id="s1">
+  <p class="tag anim-fadeUp delay-1">For professionals who actually unwind</p>
+  <p class="question anim-fadeUp delay-2">
+    "Be honest. When did you last open LinkedIn<br>and actually enjoy it?"
+  </p>
+</div>
+
+<!-- ═══ SLIDE 2 — Kill the buzzwords ════════════════════ -->
+<div class="slide" id="s2">
+  <div style="text-align:center">
+    <p class="tag anim-fadeUp delay-1">We're done with</p>
+    <span class="buzzword delay-2 anim-fadeUp">Synergy</span>
+    <span class="buzzword delay-3 anim-fadeUp">Disruption</span>
+    <span class="buzzword delay-4 anim-fadeUp">Humbled to announce</span>
+    <span class="buzzword delay-5 anim-fadeUp">I scaled my learnings</span>
+    <span class="buzzword no-strike" style="margin-top:32px;font-size:56px;opacity:0;" class="delay-5 anim-scaleIn" id="done-text">
+      ✋ Done.
+    </span>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 3 — Brand reveal ═══════════════════════════ -->
+<div class="slide" id="s3">
+  <div style="text-align:center">
+    <div class="gold-line delay-1 anim-fadeIn" style="opacity:0"></div>
+    <h1 class="headline huge amber anim-scaleIn delay-2" style="opacity:0">DrinkedInn</h1>
+    <div class="gold-line delay-3 anim-fadeIn" style="opacity:0"></div>
+    <p class="subtext anim-fadeUp delay-4" style="opacity:0; font-size:32px;">
+      The social network for professionals<br>who actually know how to unwind.
+    </p>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 4 — Features ═══════════════════════════════ -->
+<div class="slide" id="s4">
+  <p class="tag anim-fadeUp delay-1">Everything you actually care about</p>
+  <div class="feature-grid">
+    <div class="feature-card" id="fc1">
+      <div class="icon">🥃</div>
+      <div class="title">Share Your Pour</div>
+      <div class="desc">Post drink stories from Tokyo, Bali, Mumbai, London. Tag the bar. Rate the whisky.</div>
+    </div>
+    <div class="feature-card" id="fc2">
+      <div class="icon">🍶</div>
+      <div class="title">Find Your Tribe</div>
+      <div class="desc">Join drink groups. Whisky Society. Craft Beer Geeks. Natural Wine Club. Your people are here.</div>
+    </div>
+    <div class="feature-card" id="fc3">
+      <div class="icon">⚡</div>
+      <div class="title">Monthly Challenges</div>
+      <div class="desc">Try 5 new craft beers. Whisky world tour. Climb the leaderboard. Earn badges.</div>
+    </div>
+    <div class="feature-card" id="fc4">
+      <div class="icon">📍</div>
+      <div class="title">Live Bar Map</div>
+      <div class="desc">Every post pins a location. See where the world is drinking right now.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 5 — Social proof / energy ══════════════════ -->
+<div class="slide" id="s5">
+  <p class="tag anim-fadeUp delay-1">The community is already here</p>
+  <h1 class="headline anim-fadeUp delay-2" style="opacity:0">
+    Real people. Real drinks.<br><span style="color:#f5a623">Real stories.</span>
+  </h1>
+  <div class="stats-row">
+    <div class="stat" id="st1">
+      <div class="stat-num">49+</div>
+      <div class="stat-label">Members</div>
+    </div>
+    <div class="stat" id="st2">
+      <div class="stat-num">98+</div>
+      <div class="stat-label">Stories Poured</div>
+    </div>
+    <div class="stat" id="st3">
+      <div class="stat-num">17+</div>
+      <div class="stat-label">Countries</div>
+    </div>
+    <div class="stat" id="st4">
+      <div class="stat-num">0</div>
+      <div class="stat-label">Synergy</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SLIDE 6 — Manifesto ══════════════════════════════ -->
+<div class="slide" id="s6">
+  <span class="manifesto-line" id="m1">No business talk.</span>
+  <span class="manifesto-line" id="m2">No networking events.</span>
+  <span class="manifesto-line" id="m3">No synergy.</span>
+  <span class="manifesto-line" id="m4" style="font-size:48px; font-weight:700; color:#f5a623; margin-top:32px;">
+    Just good drinks. 🥃
+  </span>
+  <span class="manifesto-line" id="m5" style="font-size:20px; margin-top:40px; color:rgba(255,255,255,0.35)">
+    🚫💼 No business talk. No synergy. Just good drinks.
+  </span>
+</div>
+
+<!-- ═══ SLIDE 7 — CTA ═════════════════════════════════════ -->
+<div class="slide" id="s7">
+  <div style="text-align:center">
+    <p class="tag anim-fadeUp delay-1">You've earned this</p>
+    <div class="cta-logo anim-scaleIn delay-2" style="opacity:0">DrinkedInn</div>
+    <div class="cta-domain anim-fadeUp delay-3" style="opacity:0">drinkedinn.com</div>
+    <button class="cta-btn anim-fadeUp delay-4" style="opacity:0">
+      Join Free — It's Your Round 🥃
+    </button>
+  </div>
+  <div class="tagline-bottom">
+    No business talk &nbsp;·&nbsp; No synergy &nbsp;·&nbsp; Just good drinks 🚫💼
+  </div>
+</div>
+
+<script>
+// ── Particle system ──────────────────────────────────────
+const canvas = document.getElementById('particles');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const particles = Array.from({length: 60}, () => ({
+  x: Math.random() * canvas.width,
+  y: Math.random() * canvas.height,
+  r: Math.random() * 2 + 0.5,
+  dx: (Math.random() - 0.5) * 0.4,
+  dy: -Math.random() * 0.6 - 0.2,
+  alpha: Math.random() * 0.4 + 0.1,
+}));
+
+function drawParticles() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  particles.forEach(p => {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(245,166,35,${p.alpha})`;
+    ctx.fill();
+    p.x += p.dx; p.y += p.dy;
+    if (p.y < -10) { p.y = canvas.height + 10; p.x = Math.random() * canvas.width; }
+  });
+  requestAnimationFrame(drawParticles);
+}
+drawParticles();
+
+// ── Slide engine ─────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+const bar    = document.getElementById('progress-bar');
+const ctr    = document.getElementById('counter');
+let current  = 0;
+let timer    = null;
+
+// Duration per slide (ms)
+const DURATIONS = [4000, 5500, 5000, 7000, 6000, 6000, 8000];
+
+function pad(n) { return String(n).padStart(2,'0'); }
+
+function goTo(idx) {
+  slides[current].classList.remove('active');
+  current = idx;
+  slides[current].classList.add('active');
+  ctr.textContent = `${pad(current+1)} / ${pad(slides.length)}`;
+
+  // Animate progress bar
+  bar.style.transition = 'none';
+  bar.style.width = '0%';
+  setTimeout(() => {
+    bar.style.transition = `width ${DURATIONS[current]}ms linear`;
+    bar.style.width = '100%';
+  }, 50);
+
+  // Trigger slide-specific animations
+  triggerSlide(current);
+
+  // Auto-advance
+  clearTimeout(timer);
+  if (current < slides.length - 1) {
+    timer = setTimeout(() => goTo(current + 1), DURATIONS[current]);
+  }
+}
+
+function triggerSlide(idx) {
+  if (idx === 1) {
+    // Buzzwords stagger
+    document.querySelectorAll('.buzzword').forEach((el,i) => {
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.animation = `wordPop 0.5s ease forwards`;
+      }, 400 + i * 500);
+    });
+    setTimeout(() => {
+      const d = document.getElementById('done-text');
+      if(d){ d.style.opacity='1'; d.style.animation='scaleIn 0.6s ease forwards'; }
+    }, 3200);
+  }
+  if (idx === 3) {
+    // Feature cards stagger
+    ['fc1','fc2','fc3','fc4'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.style.opacity = '1';
+        el.style.animation = `fadeUp 0.7s ease forwards`;
+      }, 300 + i * 300);
+    });
+  }
+  if (idx === 4) {
+    // Stats pop in
+    ['st1','st2','st3','st4'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.style.opacity='0';
+      setTimeout(()=>{
+        el.style.opacity='1';
+        el.style.animation='wordPop 0.6s ease forwards';
+      }, 800 + i*350);
+    });
+  }
+  if (idx === 5) {
+    // Manifesto lines
+    ['m1','m2','m3','m4','m5'].forEach((id,i) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.style.opacity='0';
+      setTimeout(()=>{
+        el.style.opacity='1';
+        el.style.animation='fadeUp 0.8s ease forwards';
+      }, 300 + i*700);
+    });
+  }
+}
+
+// ── Keyboard / click navigation ──────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    if (current < slides.length-1) { clearTimeout(timer); goTo(current+1); }
+  }
+  if (e.key === 'ArrowLeft') {
+    if (current > 0) { clearTimeout(timer); goTo(current-1); }
+  }
+});
+
+// ── Start ────────────────────────────────────────────────
+bar.style.transition = `width ${DURATIONS[0]}ms linear`;
+bar.style.width = '100%';
+triggerSlide(0);
+timer = setTimeout(() => goTo(1), DURATIONS[0]);
+</script>
+</body>
+</html>
