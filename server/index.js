@@ -44,6 +44,9 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
+// Health check for Railway
+app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
+
 // Serve promo video page
 app.use('/promo', express.static(path.join(__dirname, '../promo')));
 
