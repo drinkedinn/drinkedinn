@@ -8,6 +8,9 @@ const http = require('http');
 // Seed 50 demo accounts on first run (after db is fully initialized)
 try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
 
+// Start auto-posting engine (demo accounts post daily)
+try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
