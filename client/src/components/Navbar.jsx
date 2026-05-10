@@ -26,6 +26,7 @@ export default function Navbar({ activeTab, setActiveTab, setShowPost, setShowSe
     { id: 'cheers',     icon: '🥂', label: 'Cheers' },
     { id: 'trips',      icon: '✈️', label: 'Trips' },
     { id: 'people',     icon: '🫂', label: 'People' },
+    { id: 'whiskeys',   icon: '🥃', label: 'Whiskeys' },
     { id: 'groups',     icon: '🍶', label: 'Groups' },
     { id: 'messages',   icon: '💬', label: 'Messages', badge: unreadMsg },
     { id: 'challenges', icon: '⚡', label: 'Challenges' },

@@ -21,6 +21,7 @@ import MyBarPage from './components/MyBarPage';
 import ChallengesPage from './components/ChallengesPage';
 import AgentDashboard from './components/AgentDashboard';
 import PeoplePage from './components/PeoplePage';
+import WhiskeyCollectionPage from './components/WhiskeyCollectionPage';
 
 const TAB_META = {
   home:       { icon: '⌂',  label: 'Home',        desc: null },
@@ -28,6 +29,7 @@ const TAB_META = {
   cheers:     { icon: '🥂', label: 'Cheers',        desc: 'Posts You Cheered' },
   trips:      { icon: '✈️', label: 'Trips',         desc: 'Travel & Location Posts' },
   people:     { icon: '🫂', label: 'Find People',   desc: 'Connect with drink pros' },
+  whiskeys:   { icon: '🥃', label: 'World Whiskeys', desc: '58 whiskies from 13 countries' },
   groups:     { icon: '🍶', label: 'Drink Groups',  desc: 'Find your tribe' },
   messages:   { icon: '💬', label: 'Messages',      desc: 'Direct messages' },
   mybar:      { icon: '🍸', label: 'My Bar',        desc: 'Ratings, Collection & Badges' },
@@ -88,6 +90,7 @@ export default function App() {
     }
 
     if (activeTab === 'people') return <PeoplePage onUserClick={setProfileId} />;
+    if (activeTab === 'whiskeys') return <WhiskeyCollectionPage />;
     if (activeTab === 'groups') return <GroupsPage />;
     if (activeTab === 'messages') return <MessagesPage />;
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
