@@ -23,6 +23,20 @@ router.put('/me', auth, (req, res) => {
   res.json({ ...user, connections, postCount });
 });
 
+router.get('/discover', auth, (req, res) => {
+  const uid = req.user.id;
+  const users = db.prepare(`
+    SELECT u.id, u.name, u.title, u.avatar, u.drinks,
+      (SELECT COUNT(*) FROM connections WHERE user_id = u.id) as connections,
+      (SELECT COUNT(*) FROM connections c2 WHERE c2.target_id = u.id
+        AND c2.user_id IN (SELECT target_id FROM connections WHERE user_id = ?)) as mutual,
+      (SELECT COUNT(*) FROM connections WHERE user_id = ? AND target_id = u.id) as isConnected
+    FROM users u WHERE u.id != ? AND u.onboarded = 1
+    ORDER BY mutual DESC, connections DESC, RANDOM() LIMIT 60
+  `).all(uid, uid, uid);
+  res.json(users);
+});
+
 router.get('/suggestions', auth, (req, res) => {
   const uid = req.user.id;
   const users = db.prepare(`

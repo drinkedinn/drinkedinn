@@ -20,12 +20,14 @@ import MessagesPage from './components/MessagesPage';
 import MyBarPage from './components/MyBarPage';
 import ChallengesPage from './components/ChallengesPage';
 import AgentDashboard from './components/AgentDashboard';
+import PeoplePage from './components/PeoplePage';
 
 const TAB_META = {
   home:       { icon: '⌂',  label: 'Home',        desc: null },
   explore:    { icon: '🔥', label: 'Explore',       desc: 'Trending Pours' },
   cheers:     { icon: '🥂', label: 'Cheers',        desc: 'Posts You Cheered' },
   trips:      { icon: '✈️', label: 'Trips',         desc: 'Travel & Location Posts' },
+  people:     { icon: '🫂', label: 'Find People',   desc: 'Connect with drink pros' },
   groups:     { icon: '🍶', label: 'Drink Groups',  desc: 'Find your tribe' },
   messages:   { icon: '💬', label: 'Messages',      desc: 'Direct messages' },
   mybar:      { icon: '🍸', label: 'My Bar',        desc: 'Ratings, Collection & Badges' },
@@ -85,6 +87,7 @@ export default function App() {
       );
     }
 
+    if (activeTab === 'people') return <PeoplePage onUserClick={setProfileId} />;
     if (activeTab === 'groups') return <GroupsPage />;
     if (activeTab === 'messages') return <MessagesPage />;
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
