@@ -91,17 +91,6 @@ export default function AuthPage() {
             {loading ? 'Pouring...' : tab === 'login' ? 'Sign In 🥃' : 'Join the Bar 🍺'}
           </button>
 
-          {tab === 'login' && (
-            <div style={{ marginTop: 16, padding: 12, background: t.cardAlt, borderRadius: 10, fontSize: 12, border: `1px solid ${t.border}` }}>
-              <div style={{ marginBottom: 4, color: t.textFaint }}>Demo accounts (password: demo123):</div>
-              {['rahul@drinkeden.app', 'ananya@drinkeden.app', 'karan@drinkeden.app'].map(email => (
-                <div key={email} onClick={() => setForm(f => ({ ...f, email, password: 'demo123' }))}
-                  style={{ color: t.accent, cursor: 'pointer', marginBottom: 2, fontWeight: 600 }}>
-                  → {email}
-                </div>
-              ))}
-            </div>
-          )}
         </form>
       </div>
 

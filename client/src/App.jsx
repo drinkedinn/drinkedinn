@@ -20,6 +20,7 @@ import MessagesPage from './components/MessagesPage';
 import MyBarPage from './components/MyBarPage';
 import ChallengesPage from './components/ChallengesPage';
 import AgentDashboard from './components/AgentDashboard';
+import AdminDashboard from './components/AdminDashboard';
 import PeoplePage from './components/PeoplePage';
 import WhiskeyCollectionPage from './components/WhiskeyCollectionPage';
 
@@ -35,6 +36,7 @@ const TAB_META = {
   mybar:      { icon: '🍸', label: 'My Bar',        desc: 'Ratings, Collection & Badges' },
   challenges: { icon: '⚡', label: 'Challenges',    desc: 'Monthly drink challenges' },
   agents:     { icon: '🤖', label: 'Agents',        desc: 'AI Agent Command Center' },
+  admin:      { icon: '🛡️', label: 'Admin',         desc: 'Platform management' },
 };
 
 export default function App() {
@@ -96,6 +98,7 @@ export default function App() {
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
     if (activeTab === 'challenges') return <ChallengesPage />;
     if (activeTab === 'agents' && user?.id === 1) return <AgentDashboard />;
+    if (activeTab === 'admin'  && user?.id === 1) return <AdminDashboard />;
 
     return (
       <>

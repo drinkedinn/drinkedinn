@@ -34,6 +34,7 @@ export default function Navbar({ activeTab, setActiveTab, setShowPost, setShowSe
 
   if (user?.id === 1) {
     tabs.push({ id: 'agents', icon: '🤖', label: 'Agents' });
+    tabs.push({ id: 'admin',  icon: '🛡️', label: 'Admin' });
   }
 
   return (

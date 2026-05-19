@@ -70,6 +70,7 @@ app.use('/api/groups',      require('./routes/groups'));
 app.use('/api/messages',    require('./routes/messages'));
 app.use('/api/challenges',  require('./routes/challenges'));
 app.use('/api/badges',      require('./routes/badges'));
+app.use('/api/admin',       require('./routes/admin'));
 
 // ===== AI Agent System =====
 const db = require('./db');
