@@ -13,101 +13,138 @@ const adminOnly = (req, res, next) => {
 router.use(auth, adminOnly);
 
 // ─── Platform Stats ────────────────────────────────────────────────────────────
-router.get('/stats', (req, res) => {
-  const users       = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  const posts       = db.prepare('SELECT COUNT(*) as c FROM posts').get().c;
-  const cheers      = db.prepare('SELECT COUNT(*) as c FROM cheers').get().c;
-  const comments    = db.prepare('SELECT COUNT(*) as c FROM comments').get().c;
-  const connections = db.prepare('SELECT COUNT(*) as c FROM connections').get().c;
-  const messages    = db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
-  const stories     = db.prepare('SELECT COUNT(*) as c FROM stories').get().c;
+router.get('/stats', async (req, res) => {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [usersRow, postsRow, cheersRow, commentsRow, connectionsRow, messagesRow, storiesRow, postsTodayRow, usersTodayRow] = await Promise.all([
+      db.get('SELECT COUNT(*) as c FROM users'),
+      db.get('SELECT COUNT(*) as c FROM posts'),
+      db.get('SELECT COUNT(*) as c FROM cheers'),
+      db.get('SELECT COUNT(*) as c FROM comments'),
+      db.get('SELECT COUNT(*) as c FROM connections'),
+      db.get('SELECT COUNT(*) as c FROM messages'),
+      db.get('SELECT COUNT(*) as c FROM stories'),
+      db.get('SELECT COUNT(*) as c FROM posts WHERE date(created_at) = ?', [today]),
+      db.get('SELECT COUNT(*) as c FROM users WHERE date(created_at) = ?', [today]),
+    ]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const postsToday  = db.prepare("SELECT COUNT(*) as c FROM posts WHERE date(created_at) = ?").get(today).c;
-  const usersToday  = db.prepare("SELECT COUNT(*) as c FROM users WHERE date(created_at) = ?").get(today).c;
+    const topPosters = await db.all(`
+      SELECT u.id, u.name, u.avatar, u.title, COUNT(p.id) as post_count
+      FROM users u LEFT JOIN posts p ON p.user_id = u.id
+      GROUP BY u.id ORDER BY post_count DESC LIMIT 5
+    `);
 
-  const topPosters = db.prepare(`
-    SELECT u.id, u.name, u.avatar, u.title, COUNT(p.id) as post_count
-    FROM users u LEFT JOIN posts p ON p.user_id = u.id
-    GROUP BY u.id ORDER BY post_count DESC LIMIT 5
-  `).all();
+    const recentSignups = await db.all(`
+      SELECT id, name, email, title, avatar, created_at, onboarded
+      FROM users ORDER BY created_at DESC LIMIT 8
+    `);
 
-  const recentSignups = db.prepare(`
-    SELECT id, name, email, title, avatar, created_at, onboarded
-    FROM users ORDER BY created_at DESC LIMIT 8
-  `).all();
-
-  res.json({ users, posts, cheers, comments, connections, messages, stories, postsToday, usersToday, topPosters, recentSignups });
+    res.json({
+      users: usersRow?.c || 0,
+      posts: postsRow?.c || 0,
+      cheers: cheersRow?.c || 0,
+      comments: commentsRow?.c || 0,
+      connections: connectionsRow?.c || 0,
+      messages: messagesRow?.c || 0,
+      stories: storiesRow?.c || 0,
+      postsToday: postsTodayRow?.c || 0,
+      usersToday: usersTodayRow?.c || 0,
+      topPosters,
+      recentSignups
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch stats' });
+  }
 });
 
 // ─── Users ─────────────────────────────────────────────────────────────────────
-router.get('/users', (req, res) => {
+router.get('/users', async (req, res) => {
   const { search = '', page = 1 } = req.query;
   const offset = (parseInt(page) - 1) * 30;
   const like = `%${search}%`;
-  const users = db.prepare(`
-    SELECT u.id, u.name, u.email, u.title, u.avatar, u.onboarded, u.created_at,
-      (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
-      (SELECT COUNT(*) FROM connections WHERE user_id = u.id) as connection_count,
-      (SELECT COUNT(*) FROM cheers WHERE user_id = u.id) as cheer_count
-    FROM users u
-    WHERE u.name LIKE ? OR u.email LIKE ? OR u.title LIKE ?
-    ORDER BY u.created_at DESC
-    LIMIT 30 OFFSET ?
-  `).all(like, like, like, offset);
-  const total = db.prepare('SELECT COUNT(*) as c FROM users WHERE name LIKE ? OR email LIKE ? OR title LIKE ?').get(like, like, like).c;
-  res.json({ users, total, page: parseInt(page) });
+  try {
+    const users = await db.all(`
+      SELECT u.id, u.name, u.email, u.title, u.avatar, u.onboarded, u.created_at,
+        (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
+        (SELECT COUNT(*) FROM connections WHERE user_id = u.id) as connection_count,
+        (SELECT COUNT(*) FROM cheers WHERE user_id = u.id) as cheer_count
+      FROM users u
+      WHERE u.name LIKE ? OR u.email LIKE ? OR u.title LIKE ?
+      ORDER BY u.created_at DESC
+      LIMIT 30 OFFSET ?
+    `, [like, like, like, offset]);
+    const totalRow = await db.get('SELECT COUNT(*) as c FROM users WHERE name LIKE ? OR email LIKE ? OR title LIKE ?', [like, like, like]);
+    res.json({ users, total: totalRow?.c || 0, page: parseInt(page) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
 });
 
-router.delete('/users/:id', (req, res) => {
+router.delete('/users/:id', async (req, res) => {
   const id = parseInt(req.params.id);
   if (id === 1) return res.status(400).json({ error: 'Cannot delete admin' });
-  db.prepare('DELETE FROM connections WHERE user_id = ? OR target_id = ?').run(id, id);
-  db.prepare('DELETE FROM cheers WHERE user_id = ?').run(id);
-  db.prepare('DELETE FROM comments WHERE user_id = ?').run(id);
-  db.prepare('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?').run(id, id);
-  db.prepare('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?').run(id, id);
-  db.prepare('DELETE FROM stories WHERE user_id = ?').run(id);
-  db.prepare('DELETE FROM posts WHERE user_id = ?').run(id);
-  db.prepare('DELETE FROM users WHERE id = ?').run(id);
-  res.json({ ok: true });
+  try {
+    await db.run('DELETE FROM connections WHERE user_id = ? OR target_id = ?', [id, id]);
+    await db.run('DELETE FROM cheers WHERE user_id = ?', [id]);
+    await db.run('DELETE FROM comments WHERE user_id = ?', [id]);
+    await db.run('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?', [id, id]);
+    await db.run('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', [id, id]);
+    await db.run('DELETE FROM stories WHERE user_id = ?', [id]);
+    await db.run('DELETE FROM posts WHERE user_id = ?', [id]);
+    await db.run('DELETE FROM users WHERE id = ?', [id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user' });
+  }
 });
 
 // ─── Posts ─────────────────────────────────────────────────────────────────────
-router.get('/posts', (req, res) => {
+router.get('/posts', async (req, res) => {
   const { page = 1 } = req.query;
   const offset = (parseInt(page) - 1) * 30;
-  const posts = db.prepare(`
-    SELECT p.id, p.content, p.drink, p.location, p.created_at,
-      u.id as user_id, u.name, u.avatar,
-      (SELECT COUNT(*) FROM cheers WHERE post_id = p.id) as cheer_count,
-      (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
-    FROM posts p JOIN users u ON p.user_id = u.id
-    ORDER BY p.created_at DESC LIMIT 30 OFFSET ?
-  `).all(offset);
-  const total = db.prepare('SELECT COUNT(*) as c FROM posts').get().c;
-  res.json({ posts, total, page: parseInt(page) });
+  try {
+    const posts = await db.all(`
+      SELECT p.id, p.content, p.drink, p.location, p.created_at,
+        u.id as user_id, u.name, u.avatar,
+        (SELECT COUNT(*) FROM cheers WHERE post_id = p.id) as cheer_count,
+        (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count
+      FROM posts p JOIN users u ON p.user_id = u.id
+      ORDER BY p.created_at DESC LIMIT 30 OFFSET ?
+    `, [offset]);
+    const totalRow = await db.get('SELECT COUNT(*) as c FROM posts');
+    res.json({ posts, total: totalRow?.c || 0, page: parseInt(page) });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch posts' });
+  }
 });
 
-router.delete('/posts/:id', (req, res) => {
-  db.prepare('DELETE FROM cheers WHERE post_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM comments WHERE post_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM posts WHERE id = ?').run(req.params.id);
-  res.json({ ok: true });
+router.delete('/posts/:id', async (req, res) => {
+  try {
+    await db.run('DELETE FROM cheers WHERE post_id = ?', [req.params.id]);
+    await db.run('DELETE FROM comments WHERE post_id = ?', [req.params.id]);
+    await db.run('DELETE FROM posts WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete post' });
+  }
 });
 
 // ─── Recent activity feed ──────────────────────────────────────────────────────
-router.get('/activity', (req, res) => {
-  const posts = db.prepare(`
-    SELECT 'post' as type, p.id, p.content as detail, u.name, u.avatar, p.created_at as ts
-    FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC LIMIT 20
-  `).all();
-  const signups = db.prepare(`
-    SELECT 'signup' as type, u.id, u.email as detail, u.name, u.avatar, u.created_at as ts
-    FROM users u ORDER BY u.created_at DESC LIMIT 10
-  `).all();
-  const all = [...posts, ...signups].sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 30);
-  res.json(all);
+router.get('/activity', async (req, res) => {
+  try {
+    const posts = await db.all(`
+      SELECT 'post' as type, p.id, p.content as detail, u.name, u.avatar, p.created_at as ts
+      FROM posts p JOIN users u ON p.user_id = u.id ORDER BY p.created_at DESC LIMIT 20
+    `);
+    const signups = await db.all(`
+      SELECT 'signup' as type, u.id, u.email as detail, u.name, u.avatar, u.created_at as ts
+      FROM users u ORDER BY u.created_at DESC LIMIT 10
+    `);
+    const all = [...posts, ...signups].sort((a, b) => new Date(b.ts) - new Date(a.ts)).slice(0, 30);
+    res.json(all);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch activity' });
+  }
 });
 
 module.exports = router;

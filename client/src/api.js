@@ -2,9 +2,7 @@ import axios from 'axios';
 
 const BASE = import.meta.env.VITE_API_URL
   ? `${import.meta.env.VITE_API_URL}/api`
-  : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? '/api'
-    : 'https://drinkedinn-production.up.railway.app/api';
+  : '/api'; // On Vercel, /api routes go to the serverless function
 
 const api = axios.create({ baseURL: BASE });
 

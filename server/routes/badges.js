@@ -19,24 +19,52 @@ const BADGE_DEFS = [
   { id: 'challenger',      icon: '⚡', name: 'Challenger',        desc: 'Joined a monthly challenge',      check: (s) => s.challenges_joined >= 1 },
 ];
 
-router.get('/:userId', auth, (req, res) => {
+router.get('/:userId', auth, async (req, res) => {
   const uid = req.params.userId;
-  const { count: posts }     = db.prepare('SELECT COUNT(*) as count FROM posts WHERE user_id = ?').get(uid);
-  const { count: connections }= db.prepare('SELECT COUNT(*) as count FROM connections WHERE user_id = ?').get(uid);
-  const { count: cheers_received } = db.prepare('SELECT COUNT(*) as count FROM cheers c JOIN posts p ON c.post_id = p.id WHERE p.user_id = ?').get(uid);
-  const { count: comments_made } = db.prepare('SELECT COUNT(*) as count FROM comments WHERE user_id = ?').get(uid);
-  const { count: ratings }   = db.prepare('SELECT COUNT(*) as count FROM drink_ratings WHERE user_id = ?').get(uid);
-  const { count: collection } = db.prepare('SELECT COUNT(*) as count FROM collection WHERE user_id = ?').get(uid);
-  const { count: bucket_checked } = db.prepare("SELECT COUNT(*) as count FROM bucket_list WHERE user_id = ? AND checked = 1").get(uid);
-  const { count: groups_created } = db.prepare('SELECT COUNT(*) as count FROM drink_groups WHERE created_by = ?').get(uid);
-  const { count: challenges_joined } = db.prepare('SELECT COUNT(*) as count FROM challenge_entries WHERE user_id = ?').get(uid);
-  const locs = db.prepare("SELECT COUNT(DISTINCT location) as count FROM posts WHERE user_id = ? AND location != ''").get(uid);
-  const locations = locs.count;
+  try {
+    const [
+      postsRow,
+      connectionsRow,
+      cheersRow,
+      commentsRow,
+      ratingsRow,
+      collectionRow,
+      bucketRow,
+      groupsRow,
+      challengesRow,
+      locsRow,
+    ] = await Promise.all([
+      db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM cheers c JOIN posts p ON c.post_id = p.id WHERE p.user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM comments WHERE user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM drink_ratings WHERE user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM collection WHERE user_id = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM bucket_list WHERE user_id = ? AND checked = 1', [uid]),
+      db.get('SELECT COUNT(*) as count FROM drink_groups WHERE created_by = ?', [uid]),
+      db.get('SELECT COUNT(*) as count FROM challenge_entries WHERE user_id = ?', [uid]),
+      db.get("SELECT COUNT(DISTINCT location) as count FROM posts WHERE user_id = ? AND location != ''", [uid]),
+    ]);
 
-  const stats = { posts, connections, cheers_received, comments_made, ratings, collection, bucket_checked, groups_created, challenges_joined, locations };
-  const earned = BADGE_DEFS.filter(b => b.check(stats)).map(b => ({ ...b, check: undefined }));
-  const all = BADGE_DEFS.map(b => ({ ...b, earned: b.check(stats), check: undefined }));
-  res.json({ earned, all, stats });
+    const stats = {
+      posts: postsRow?.count || 0,
+      connections: connectionsRow?.count || 0,
+      cheers_received: cheersRow?.count || 0,
+      comments_made: commentsRow?.count || 0,
+      ratings: ratingsRow?.count || 0,
+      collection: collectionRow?.count || 0,
+      bucket_checked: bucketRow?.count || 0,
+      groups_created: groupsRow?.count || 0,
+      challenges_joined: challengesRow?.count || 0,
+      locations: locsRow?.count || 0,
+    };
+
+    const earned = BADGE_DEFS.filter(b => b.check(stats)).map(b => ({ ...b, check: undefined }));
+    const all = BADGE_DEFS.map(b => ({ ...b, earned: b.check(stats), check: undefined }));
+    res.json({ earned, all, stats });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch badges' });
+  }
 });
 
 module.exports = router;

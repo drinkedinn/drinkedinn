@@ -5,18 +5,6 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 
-// Seed 50 demo accounts on first run (after db is fully initialized)
-try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
-
-// Grant admin to platform owner — runs AFTER seed so the user exists
-try {
-  const _db = require('./db');
-  _db.prepare("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'").run();
-} catch(e) {}
-
-// Start auto-posting engine (demo accounts post daily)
-try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }
-
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
@@ -53,7 +41,7 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
-// Health check for Railway
+// Health check for Railway / Vercel
 app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
 
 // Serve promo video page
@@ -118,8 +106,31 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 }
 
-server.listen(PORT, () => {
-  console.log(`🍺 DrinkedInn API → http://localhost:${PORT}`);
-  console.log(`🤖 Agent System: ${Object.keys(orchestrator.agents).length} agents active (${orchestrator.getStats().orgAgents} org + ${orchestrator.getStats().platformAgents} platform)`);
-  console.log(`🧠 LLM Provider: ${orchestrator.llm.provider}`);
-});
+// Export app for Vercel serverless
+module.exports = app;
+
+// Only start the HTTP server when not running in Vercel
+if (!process.env.VERCEL) {
+  async function startServer() {
+    await db.init();
+
+    // Seed 50 demo accounts on first run (after db is fully initialized)
+    try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
+
+    // Grant admin to platform owner — runs AFTER seed so the user exists
+    try {
+      await db.run("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'");
+    } catch(e) {}
+
+    // Start auto-posting engine (demo accounts post daily)
+    try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }
+
+    server.listen(PORT, () => {
+      console.log(`🍺 DrinkedInn API → http://localhost:${PORT}`);
+      console.log(`🤖 Agent System: ${Object.keys(orchestrator.agents).length} agents active (${orchestrator.getStats().orgAgents} org + ${orchestrator.getStats().platformAgents} platform)`);
+      console.log(`🧠 LLM Provider: ${orchestrator.llm.provider}`);
+    });
+  }
+
+  startServer().catch(console.error);
+}
