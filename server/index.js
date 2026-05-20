@@ -35,6 +35,14 @@ try {
   console.warn('⚠️  Could not create uploads dir:', e.message);
 }
 
+// On Vercel: kick off DB init immediately at module load (non-blocking).
+// All API requests wait for this promise before being processed.
+const db = require('./db');
+let _dbReady = null;
+if (process.env.VERCEL) {
+  _dbReady = db.init().catch(e => console.error('DB init error:', e.message));
+}
+
 const allowedOrigins = [
   'http://localhost:3000',
   'https://drinkedinn.com',
@@ -47,6 +55,12 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
+
+// Wait for DB to be ready before processing any request (Vercel cold start)
+app.use(async (req, res, next) => {
+  if (_dbReady) { try { await _dbReady; } catch {} }
+  next();
+});
 
 // Health check for Railway / Vercel
 app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
@@ -74,7 +88,6 @@ app.use('/api/badges',      require('./routes/badges'));
 app.use('/api/admin',       require('./routes/admin'));
 
 // ===== AI Agent System =====
-const db = require('./db');
 const Orchestrator = require('./agents/orchestrator');
 const orchestrator = new Orchestrator(db, {
   orgName: 'DrinkedInn',
