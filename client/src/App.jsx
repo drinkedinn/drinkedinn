@@ -20,7 +20,7 @@ import MessagesPage from './components/MessagesPage';
 import MyBarPage from './components/MyBarPage';
 import ChallengesPage from './components/ChallengesPage';
 import AgentDashboard from './components/AgentDashboard';
-import AdminDashboard from './components/AdminDashboard';
+import AdminPage from './components/AdminPage';
 import PeoplePage from './components/PeoplePage';
 import WhiskeyCollectionPage from './components/WhiskeyCollectionPage';
 
@@ -98,7 +98,7 @@ export default function App() {
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
     if (activeTab === 'challenges') return <ChallengesPage />;
     if (activeTab === 'agents' && user?.id === 1) return <AgentDashboard />;
-    if (activeTab === 'admin'  && user?.id === 1) return <AdminDashboard />;
+    if (activeTab === 'admin'  && user?.id === 1) return <AdminPage />;
 
     return (
       <>
