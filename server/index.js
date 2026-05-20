@@ -8,6 +8,12 @@ const http = require('http');
 // Seed 50 demo accounts on first run (after db is fully initialized)
 try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
 
+// Grant admin to platform owner — runs AFTER seed so the user exists
+try {
+  const _db = require('./db');
+  _db.prepare("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'").run();
+} catch(e) {}
+
 // Start auto-posting engine (demo accounts post daily)
 try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }
 
