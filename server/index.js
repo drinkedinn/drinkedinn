@@ -82,18 +82,20 @@ app.use('/api/agents', agentRoutes);
 
 // WebSocket connections for agent dashboard
 if (wss) {
-  wss.on('connection', (ws) => {
+  wss.on('connection', async (ws) => {
     console.log('🤖 Agent dashboard client connected');
     orchestrator.addWSClient(ws);
-    ws.send(JSON.stringify({
-      event: 'init',
-      data: {
-        agents: orchestrator.getAllStates(),
-        stats: orchestrator.getStats(),
-        activities: orchestrator.getActivityFeed(20),
-        pendingApprovals: orchestrator.decisionEngine.getPendingApprovals()
-      }
-    }));
+    try {
+      ws.send(JSON.stringify({
+        event: 'init',
+        data: {
+          agents: orchestrator.getAllStates(),
+          stats: await orchestrator.getStats(),
+          activities: orchestrator.getActivityFeed(20),
+          pendingApprovals: orchestrator.decisionEngine.getPendingApprovals()
+        }
+      }));
+    } catch (e) {}
     ws.on('close', () => {
       orchestrator.removeWSClient(ws);
       console.log('🤖 Agent dashboard client disconnected');

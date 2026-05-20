@@ -6,13 +6,15 @@ const router = express.Router();
 
 module.exports = function(orchestrator) {
   // Dashboard
-  router.get('/dashboard', (req, res) => {
-    res.json({
-      agents: orchestrator.getAllStates(),
-      stats: orchestrator.getStats(),
-      activities: orchestrator.getActivityFeed(20),
-      pendingApprovals: orchestrator.decisionEngine.getPendingApprovals()
-    });
+  router.get('/dashboard', async (req, res) => {
+    try {
+      res.json({
+        agents: orchestrator.getAllStates(),
+        stats: await orchestrator.getStats(),
+        activities: orchestrator.getActivityFeed(20),
+        pendingApprovals: orchestrator.decisionEngine.getPendingApprovals()
+      });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // All agents
@@ -94,7 +96,10 @@ module.exports = function(orchestrator) {
   });
 
   // Stats
-  router.get('/stats/overview', (req, res) => res.json(orchestrator.getStats()));
+  router.get('/stats/overview', async (req, res) => {
+    try { res.json(await orchestrator.getStats()); }
+    catch (e) { res.status(500).json({ error: e.message }); }
+  });
 
   return router;
 };

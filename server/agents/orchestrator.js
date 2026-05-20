@@ -1,6 +1,7 @@
 /**
  * Orchestrator — Manages all 16 agents, inter-agent communication,
  * collaboration, and real-time event broadcasting for DrinkedInn.
+ * Updated to use async db helpers (@libsql/client compatible).
  */
 const AgentBase = require('./AgentBase');
 const AGENT_ROLES = require('./roles');
@@ -10,32 +11,43 @@ const crypto = require('crypto');
 
 class Orchestrator {
   constructor(db, orgConfig = {}) {
-    this.db = db; // DrinkedInn's SQLite database
+    this.db = db;
     this.orgConfig = orgConfig;
     this.agents = {};
     this.llm = new LLMProvider(orgConfig.llm || {});
     this.decisionEngine = new DecisionEngine(orgConfig, db);
     this.activityFeed = [];
+    this.wsClients = new Set();
+    this._initAgents();
+    // Load persisted config & activities async (non-blocking)
+    this._loadPersistedState();
+  }
+
+  async _loadPersistedState() {
     try {
-      const globalConfigRow = this.db.prepare("SELECT config_json FROM agent_configs WHERE key='global'").get();
+      const globalConfigRow = await this.db.get("SELECT config_json FROM agent_configs WHERE key='global'");
       if (globalConfigRow) {
         this.orgConfig = JSON.parse(globalConfigRow.config_json);
         this.llm = new LLMProvider(this.orgConfig.llm || {});
+        Object.values(this.agents).forEach(a => { a.llm = this.llm; });
       }
-      const activitiesRows = this.db.prepare("SELECT data_json FROM agent_activities ORDER BY created_at ASC LIMIT 100").all();
-      this.activityFeed = activitiesRows.map(r => JSON.parse(r.data_json));
-    } catch(e) {}
-    this.wsClients = new Set();
-    this._initAgents();
+    } catch (e) {}
+    try {
+      const activitiesRows = await this.db.all("SELECT data_json FROM agent_activities ORDER BY created_at ASC LIMIT 100");
+      this.activityFeed = activitiesRows.map(r => { try { return JSON.parse(r.data_json); } catch { return null; } }).filter(Boolean);
+    } catch (e) {}
+    // Load per-agent configs
+    for (const [key, a] of Object.entries(this.agents)) {
+      try {
+        const row = await this.db.get("SELECT config_json FROM agent_configs WHERE key=?", [key]);
+        if (row) a.updateConfig(JSON.parse(row.config_json));
+      } catch (e) {}
+    }
   }
 
   _initAgents() {
     Object.entries(AGENT_ROLES).forEach(([key, config]) => {
       const a = new AgentBase(config, this.llm, this);
-      try {
-        const row = this.db.prepare("SELECT config_json FROM agent_configs WHERE key=?").get(key);
-        if (row) a.updateConfig(JSON.parse(row.config_json));
-      } catch(e) {}
       this.agents[key] = a;
     });
   }
@@ -47,19 +59,31 @@ class Orchestrator {
     this.wsClients.forEach(ws => { if (ws.readyState === 1) ws.send(msg); });
   }
 
-  /** Get real platform stats from DrinkedInn's DB */
-  getDBStats() {
+  /** Get real platform stats from DrinkedInn's DB (async) */
+  async getDBStats() {
     try {
-      const users = this.db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-      const posts = this.db.prepare('SELECT COUNT(*) as c FROM posts').get().c;
-      const cheers = this.db.prepare('SELECT COUNT(*) as c FROM cheers').get().c;
-      const groups = this.db.prepare('SELECT COUNT(*) as c FROM drink_groups').get().c;
-      const events = this.db.prepare('SELECT COUNT(*) as c FROM events').get().c;
-      const challenges = this.db.prepare('SELECT COUNT(*) as c FROM challenges').get().c;
-      const ratings = this.db.prepare('SELECT COUNT(*) as c FROM drink_ratings').get().c;
-      const messages = this.db.prepare('SELECT COUNT(*) as c FROM messages').get().c;
-      const collections = this.db.prepare('SELECT COUNT(*) as c FROM collection').get().c;
-      return { users, posts, cheers, groups, events, challenges, ratings, messages, collections };
+      const [users, posts, cheers, groups, events, challenges, ratings, messages, collections] = await Promise.all([
+        this.db.get('SELECT COUNT(*) as c FROM users'),
+        this.db.get('SELECT COUNT(*) as c FROM posts'),
+        this.db.get('SELECT COUNT(*) as c FROM cheers'),
+        this.db.get('SELECT COUNT(*) as c FROM drink_groups'),
+        this.db.get('SELECT COUNT(*) as c FROM events'),
+        this.db.get('SELECT COUNT(*) as c FROM challenges'),
+        this.db.get('SELECT COUNT(*) as c FROM drink_ratings'),
+        this.db.get('SELECT COUNT(*) as c FROM messages'),
+        this.db.get('SELECT COUNT(*) as c FROM collection'),
+      ]);
+      return {
+        users: users?.c || 0,
+        posts: posts?.c || 0,
+        cheers: cheers?.c || 0,
+        groups: groups?.c || 0,
+        events: events?.c || 0,
+        challenges: challenges?.c || 0,
+        ratings: ratings?.c || 0,
+        messages: messages?.c || 0,
+        collections: collections?.c || 0,
+      };
     } catch (e) { return {}; }
   }
 
@@ -69,11 +93,11 @@ class Orchestrator {
     if (agent.status !== 'active') throw new Error(`Agent ${agentKey} is ${agent.status}`);
 
     // Inject real platform data
-    context.dbStats = this.getDBStats();
+    context.dbStats = await this.getDBStats();
 
     this._addActivity('task_submitted', { agentRole: agent.role, agentKey, task, submittedBy: context.submittedBy || 'owner' });
     const decision = await agent.decide(task, context);
-    if (decision.tier === 1) this.executeAction(decision);
+    if (decision.tier === 1) await this.executeAction(decision);
     this.decisionEngine.recordDecision(decision);
     this.broadcast('decision', decision);
     this.broadcast('agent_update', agent.getState());
@@ -85,7 +109,6 @@ class Orchestrator {
     if (!reqAgent) return;
     const perspectives = [];
     for (const collabRole of reqAgent.collaborators) {
-      const collab = Object.values(this.agents).find(a => a.role === collabRole || Object.keys(this.agents).find(k => k === collabRole));
       const collabAgent = this.agents[collabRole];
       if (collabAgent && collabAgent.status === 'active') {
         const p = await collabAgent.collaborate(decision, reqAgent);
@@ -102,7 +125,8 @@ class Orchestrator {
     const from = this.agents[fromKey];
     const to = this.agents[toKey];
     if (!from || !to) throw new Error('Agent not found');
-    const response = await to.think(`Message from ${from.role}: ${message}`, { fromAgent: from.role, dbStats: this.getDBStats() });
+    const dbStats = await this.getDBStats();
+    const response = await to.think(`Message from ${from.role}: ${message}`, { fromAgent: from.role, dbStats });
     this._addActivity('agent_message', { from: from.role, to: to.role, message: message.substring(0, 200) });
     this.broadcast('agent_message', { from: from.role, to: to.role, message, response, timestamp: new Date().toISOString() });
     return { from: from.role, to: to.role, message, response };
@@ -119,7 +143,10 @@ class Orchestrator {
     const a = this.agents[key];
     if (!a) throw new Error(`Agent ${key} not found`);
     a.updateConfig(config);
-    try { this.db.prepare("INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES (?, ?)").run(key, JSON.stringify(a.getState())); } catch(e){}
+    this.db.run(
+      "INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES (?, ?)",
+      [key, JSON.stringify(a.getState())]
+    ).catch(() => {});
     this.broadcast('agent_update', a.getState());
     return a.getState();
   }
@@ -129,7 +156,10 @@ class Orchestrator {
     if (!a) throw new Error(`Agent ${key} not found`);
     if (status === 'active') a.resume(); else if (status === 'paused') a.pause(); else a.disable();
     this._addActivity('status_change', { agentRole: a.role, status });
-    try { this.db.prepare("INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES (?, ?)").run(key, JSON.stringify(a.getState())); } catch(e){}
+    this.db.run(
+      "INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES (?, ?)",
+      [key, JSON.stringify(a.getState())]
+    ).catch(() => {});
     this.broadcast('agent_update', a.getState());
     return a.getState();
   }
@@ -139,7 +169,10 @@ class Orchestrator {
       this.orgConfig.llm = { ...this.orgConfig.llm, ...config.llm };
       this.llm = new LLMProvider(this.orgConfig.llm);
       Object.values(this.agents).forEach(a => { a.llm = this.llm; });
-      try { this.db.prepare("INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES ('global', ?)").run(JSON.stringify(this.orgConfig)); } catch(e){}
+      this.db.run(
+        "INSERT OR REPLACE INTO agent_configs (key, config_json) VALUES ('global', ?)",
+        [JSON.stringify(this.orgConfig)]
+      ).catch(() => {});
       this._addActivity('config_update', { message: `LLM Provider changed to ${this.orgConfig.llm.provider}` });
     }
     return this.orgConfig;
@@ -157,17 +190,17 @@ class Orchestrator {
     return d;
   }
 
-  executeAction(decision) {
+  async executeAction(decision) {
     if (!decision.execution || !decision.execution.command) return;
     try {
       const { command, payload } = decision.execution;
       const userId = 1; // Fallback to founder ID
       if (command === 'create_event') {
-        this.db.prepare('INSERT INTO events (user_id, title, date, location, drink) VALUES (?, ?, ?, ?, ?)').run(userId, payload.title, payload.date, payload.location || '', payload.drink || '🥃');
+        await this.db.run('INSERT INTO events (user_id, title, date, location, drink) VALUES (?, ?, ?, ?, ?)', [userId, payload.title, payload.date, payload.location || '', payload.drink || '🥃']);
       } else if (command === 'create_group') {
-        this.db.prepare('INSERT INTO drink_groups (name, description, drink_type, created_by) VALUES (?, ?, ?, ?)').run(payload.name, payload.description, payload.drink_type || 'Mixed', userId);
+        await this.db.run('INSERT INTO drink_groups (name, description, drink_type, created_by) VALUES (?, ?, ?, ?)', [payload.name, payload.description, payload.drink_type || 'Mixed', userId]);
       } else if (command === 'create_post') {
-        this.db.prepare('INSERT INTO posts (user_id, content, drink) VALUES (?, ?, ?)').run(userId, payload.content, payload.drink || '🥃');
+        await this.db.run('INSERT INTO posts (user_id, content, drink) VALUES (?, ?, ?)', [userId, payload.content, payload.drink || '🥃']);
       }
       this._addActivity('action_executed', { agentRole: decision.agentRole, command, payload });
     } catch (e) {
@@ -178,7 +211,7 @@ class Orchestrator {
 
   getActivityFeed(limit = 50) { return this.activityFeed.slice(-limit); }
 
-  getStats() {
+  async getStats() {
     return {
       agents: Object.keys(this.agents).length,
       activeAgents: Object.values(this.agents).filter(a => a.status === 'active').length,
@@ -187,7 +220,7 @@ class Orchestrator {
       decisions: this.decisionEngine.getStats(),
       pendingApprovals: this.decisionEngine.getPendingApprovals().length,
       activities: this.activityFeed.length,
-      platform: this.getDBStats()
+      platform: await this.getDBStats(),
     };
   }
 
@@ -195,7 +228,10 @@ class Orchestrator {
     const a = { id: crypto.randomUUID(), type, data, timestamp: new Date().toISOString() };
     this.activityFeed.push(a);
     if (this.activityFeed.length > 500) this.activityFeed = this.activityFeed.slice(-500);
-    try { this.db.prepare("INSERT INTO agent_activities (id, type, data_json) VALUES (?, ?, ?)").run(a.id, type, JSON.stringify(a)); } catch(e){}
+    this.db.run(
+      "INSERT INTO agent_activities (id, type, data_json) VALUES (?, ?, ?)",
+      [a.id, type, JSON.stringify(a)]
+    ).catch(() => {});
     this.broadcast('activity', a);
   }
 }
