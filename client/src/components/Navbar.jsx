@@ -32,7 +32,7 @@ export default function Navbar({ activeTab, setActiveTab, setShowPost, setShowSe
     { id: 'challenges', icon: '⚡', label: 'Challenges' },
   ];
 
-  if (user?.id === 1) {
+  if (user?.is_admin) {
     tabs.push({ id: 'agents', icon: '🤖', label: 'Agents' });
     tabs.push({ id: 'admin',  icon: '🛡️', label: 'Admin' });
   }

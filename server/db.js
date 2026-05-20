@@ -222,8 +222,14 @@ const migrations = [
   `ALTER TABLE users ADD COLUMN drinks TEXT DEFAULT '{}'`,
   `ALTER TABLE users ADD COLUMN onboarded INTEGER DEFAULT 0`,
   `ALTER TABLE posts ADD COLUMN has_poll INTEGER DEFAULT 0`,
+  `ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`,
 ];
 migrations.forEach(sql => { try { db.exec(sql); } catch {} });
+
+// Mark the platform owner as admin (by email — works regardless of user ID)
+try {
+  db.prepare("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'").run();
+} catch(e) {}
 
 // Seed demo data
 const { count } = db.prepare('SELECT COUNT(*) as count FROM users').get();

@@ -5,7 +5,7 @@ const auth = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/me', auth, (req, res) => {
-  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?').get(req.user.id);
   const { count: connections } = db.prepare('SELECT COUNT(*) as count FROM connections WHERE user_id = ?').get(req.user.id);
   const { count: postCount } = db.prepare('SELECT COUNT(*) as count FROM posts WHERE user_id = ?').get(req.user.id);
   res.json({ ...user, connections, postCount });
@@ -17,7 +17,7 @@ router.put('/me', auth, (req, res) => {
   const drinksJson = typeof drinks === 'object' ? JSON.stringify(drinks) : (drinks || '{}');
   db.prepare('UPDATE users SET name = ?, title = ?, bio = ?, avatar = ?, drinks = ?, onboarded = ? WHERE id = ?')
     .run(name.trim(), title || '', bio || '', avatar || '', drinksJson, onboarded ? 1 : 0, req.user.id);
-  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, created_at FROM users WHERE id = ?').get(req.user.id);
+  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?').get(req.user.id);
   const { count: connections } = db.prepare('SELECT COUNT(*) as count FROM connections WHERE user_id = ?').get(req.user.id);
   const { count: postCount } = db.prepare('SELECT COUNT(*) as count FROM posts WHERE user_id = ?').get(req.user.id);
   res.json({ ...user, connections, postCount });
@@ -66,7 +66,7 @@ router.post('/:id/connect', auth, (req, res) => {
 });
 
 router.get('/:id', auth, (req, res) => {
-  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, created_at FROM users WHERE id = ?').get(req.params.id);
+  const user = db.prepare('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?').get(req.params.id);
   if (!user) return res.status(404).json({ error: 'User not found' });
 
   const { count: connections } = db.prepare('SELECT COUNT(*) as count FROM connections WHERE user_id = ?').get(req.params.id);

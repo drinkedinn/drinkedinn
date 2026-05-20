@@ -4,9 +4,9 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
-// Admin-only middleware
+// Admin-only middleware — checks is_admin flag, not hardcoded ID
 const adminOnly = (req, res, next) => {
-  if (req.user.id !== 1) return res.status(403).json({ error: 'Admin only' });
+  if (!req.user.is_admin) return res.status(403).json({ error: 'Admin only' });
   next();
 };
 

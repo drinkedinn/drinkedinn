@@ -97,8 +97,8 @@ export default function App() {
     if (activeTab === 'messages') return <MessagesPage />;
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
     if (activeTab === 'challenges') return <ChallengesPage />;
-    if (activeTab === 'agents' && user?.id === 1) return <AgentDashboard />;
-    if (activeTab === 'admin'  && user?.id === 1) return <AdminPage />;
+    if (activeTab === 'agents' && user?.is_admin) return <AgentDashboard />;
+    if (activeTab === 'admin'  && user?.is_admin) return <AdminPage />;
 
     return (
       <>
