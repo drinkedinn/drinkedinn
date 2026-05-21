@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -26,6 +26,27 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
   const [connected, setConnected] = useState(!!initial.user_connected);
   const [connecting, setConnecting] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+
+  // 3D tilt on hover
+  const cardRef = useRef(null);
+  const tiltRef = useRef({ active: false });
+  const handleMouseMove = useCallback((e) => {
+    const card = cardRef.current;
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width  - 0.5; // -0.5 to 0.5
+    const y = (e.clientY - rect.top)  / rect.height - 0.5;
+    const rotX = (-y * 8).toFixed(2);
+    const rotY = ( x * 8).toFixed(2);
+    card.style.transform = `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(1.015,1.015,1.015)`;
+    card.style.boxShadow = `${-x*12}px ${-y*12}px 32px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)`;
+  }, []);
+  const handleMouseLeave = useCallback(() => {
+    const card = cardRef.current;
+    if (!card) return;
+    card.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+    card.style.boxShadow = '';
+  }, []);
 
   useEffect(() => { setPost(initial); setConnected(!!initial.user_connected); }, [initial]);
 
@@ -82,14 +103,14 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
   return (
     <>
     {showDetail && <PostDetailModal post={post} onClose={() => setShowDetail(false)} onUserClick={onUserClick} />}
-    <div className="fadeInUp" style={{
+    <div ref={cardRef} className="fadeInUp card-3d" style={{
       background: t.card, borderRadius: 16, border: `1px solid ${t.border}`,
       marginBottom: 16, overflow: 'hidden', boxShadow: t.shadow,
-      transition: 'box-shadow 0.2s, transform 0.2s, background 0.3s, border-color 0.3s',
+      transition: 'box-shadow 0.15s ease, transform 0.15s ease, background 0.3s, border-color 0.3s',
       ...extraStyle,
     }}
-      onMouseEnter={e => { e.currentTarget.style.boxShadow = t.shadowMd; e.currentTarget.style.transform = 'translateY(-2px)'; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = t.shadow; e.currentTarget.style.transform = 'translateY(0)'; }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px 12px' }}>

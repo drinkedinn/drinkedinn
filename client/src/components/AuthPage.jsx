@@ -36,22 +36,38 @@ export default function AuthPage() {
     />
   );
 
+  const particles = ['🥃','🍷','🍺','🥂','🍸','🍹','🥃','🍷','🍺','🥂'];
+
   return (
-    <div style={{ minHeight: '100vh', background: t.bg, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, transition: 'background 0.3s' }}>
+    <div style={{ minHeight: '100vh', background: `radial-gradient(ellipse at 50% 100%, ${t.accent}15 0%, ${t.bg} 65%)`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 20, transition: 'background 0.3s', position: 'relative', overflow: 'hidden' }}>
+      {/* Floating 3D drink emojis */}
+      {particles.map((e, i) => (
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${5 + i * 9.5}%`,
+          bottom: '-8%',
+          fontSize: `${13 + (i % 4) * 7}px`,
+          animation: `floatEmoji ${6 + i * 0.6}s ${i * 0.45}s linear infinite`,
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: 0,
+          filter: 'blur(0.3px)',
+        }}>{e}</div>
+      ))}
       <div style={{ position: 'fixed', top: 20, right: 20 }}>
         <button onClick={toggleTheme} style={{ background: t.card, border: `1px solid ${t.border}`, borderRadius: 20, padding: '8px 14px', cursor: 'pointer', fontSize: 16, boxShadow: t.shadow }}>
           {isDark ? '☀️' : '🌙'}
         </button>
       </div>
 
-      <div style={{ marginBottom: 32, textAlign: 'center', animation: 'fadeInUp 0.5s ease' }}>
+      <div style={{ marginBottom: 32, textAlign: 'center', animation: 'fadeInUp 0.5s ease', position: 'relative', zIndex: 1 }}>
         <Logo size="lg" />
         <p style={{ color: t.textMuted, marginTop: 10, fontSize: 15, fontStyle: 'italic' }}>
           Where Professionals Actually Unwind 🥃
         </p>
       </div>
 
-      <div className="fadeInUp" style={{ width: '100%', maxWidth: 420, background: t.card, borderRadius: 20, border: `1px solid ${t.border}`, overflow: 'hidden', boxShadow: t.shadowLg }}>
+      <div className="fadeInUp" style={{ width: '100%', maxWidth: 420, background: t.card, borderRadius: 20, border: `1px solid ${t.border}`, overflow: 'hidden', boxShadow: t.shadowLg, position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex' }}>
           {['login', 'register'].map(tabId => (
             <button key={tabId} onClick={() => { setTab(tabId); setError(''); }} style={{
