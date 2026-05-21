@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -61,7 +62,7 @@ export default function Stories() {
         {user && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flexShrink: 0 }}>
             <div style={{ width: 60, height: 60, borderRadius: '50%', padding: 2, background: 'linear-gradient(135deg, #f5a623, #ffcc5c)' }}>
-              <img src={user.avatar} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', border: `2px solid ${t.card}`, objectFit: 'cover' }} />
+              <Avatar src={user.avatar} name={user.name} size={56} style={{ border: `2px solid ${t.card}` }} />
             </div>
             <span style={{ fontSize: 11, color: t.textSub, fontWeight: 600 }}>You</span>
           </div>
@@ -73,7 +74,7 @@ export default function Stories() {
             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
           >
             <div style={{ width: 60, height: 60, borderRadius: '50%', padding: 2, background: 'linear-gradient(135deg, #f5a623, #ffcc5c, #ff6b35)' }}>
-              <img src={s.avatar} alt={s.name} style={{ width: '100%', height: '100%', borderRadius: '50%', border: `2px solid ${t.card}`, objectFit: 'cover' }} />
+              <Avatar src={s.avatar} name={s.name} size={56} style={{ border: `2px solid ${t.card}` }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <span style={{ fontSize: 11, color: t.textSub, fontWeight: 500, maxWidth: 56, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

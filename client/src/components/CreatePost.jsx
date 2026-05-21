@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -8,7 +9,7 @@ export default function CreatePost({ onPost }) {
   return (
     <div style={{ background: t.card, borderRadius: 16, padding: 20, border: `1px solid ${t.border}`, marginBottom: 16, boxShadow: t.shadow, transition: 'background 0.3s' }}>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-        <img src={user?.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%', border: `2px solid ${t.accent}` }} />
+        <Avatar src={user?.avatar} name={user?.name} size={44} style={{ border: `2px solid ${t.accent}` }} />
         <div onClick={onPost} style={{
           flex: 1, background: t.cardAlt, borderRadius: 24,
           padding: '12px 20px', color: t.textMuted, fontSize: 15, cursor: 'pointer',

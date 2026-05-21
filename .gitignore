@@ -31,3 +31,4 @@ npm-debug.log*
 
 # Lock files (keep package-lock for reproducibility)
 # package-lock.json
+.vercel

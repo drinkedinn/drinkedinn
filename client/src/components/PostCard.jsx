@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import PostDetailModal from './PostDetailModal';
 import PollWidget from './PollWidget';
+import Avatar from './Avatar';
 
 const fmtNum = n => n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n;
 const fmtTime = iso => {
@@ -115,7 +116,7 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px 12px' }}>
         <div style={{ position: 'relative', cursor: 'pointer' }} onClick={() => onUserClick?.(post.user_id)}>
-          <img src={post.avatar} alt="" style={{ width: 48, height: 48, borderRadius: '50%', border: `2px solid ${t.accent}`, objectFit: 'cover' }} />
+          <Avatar src={post.avatar} name={post.name} size={48} style={{ border: `2px solid ${t.accent}` }} />
           <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 14 }}>{post.drink}</span>
         </div>
         <div style={{ flex: 1 }}>
@@ -246,7 +247,7 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
           )}
           {comments.map(c => (
             <div key={c.id} style={{ display: 'flex', gap: 10, marginBottom: 12 }}>
-              <img src={c.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
+              <Avatar src={c.avatar} name={c.name} size={32} />
               <div style={{ flex: 1, background: t.card, borderRadius: 12, padding: '10px 14px', border: `1px solid ${t.border}` }}>
                 <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2, color: t.text }}>{c.name}</div>
                 <div style={{ fontSize: 14, color: t.textSub }}>{c.content}</div>
@@ -255,7 +256,7 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
           ))}
 
           <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-            <img src={user?.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%', flexShrink: 0, objectFit: 'cover' }} />
+            <Avatar src={user?.avatar} name={user?.name} size={34} />
             <div style={{ flex: 1, display: 'flex', gap: 8 }}>
               <input value={comment} onChange={e => setComment(e.target.value)}
                 placeholder="Add a comment…" onKeyDown={e => e.key === 'Enter' && submitComment()}

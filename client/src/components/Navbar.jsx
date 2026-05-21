@@ -3,6 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useWindowSize } from '../hooks/useWindowSize';
 import { useState, useEffect } from 'react';
 import api from '../api';
+import Avatar from './Avatar';
 import Logo from './Logo';
 import { NotificationBell } from './Notifications';
 
@@ -125,7 +126,7 @@ export default function Navbar({ activeTab, setActiveTab, setShowPost, setShowSe
           {/* Avatar */}
           <div style={{ position: 'relative' }}>
             <div onClick={() => setShowMenu(m => !m)} style={{ cursor: 'pointer', position: 'relative' }}>
-              <img src={user?.avatar} alt="" style={{ width: 38, height: 38, borderRadius: '50%', border: `2px solid ${t.accent}`, display: 'block' }} />
+              <Avatar src={user?.avatar} name={user?.name} size={38} style={{ border: `2px solid ${t.accent}` }} />
               <span style={{ position: 'absolute', bottom: 0, right: 0, width: 10, height: 10, background: '#22c55e', borderRadius: '50%', border: `2px solid ${t.card}` }} />
             </div>
 

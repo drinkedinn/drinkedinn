@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useEffect } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import api from '../api';
@@ -256,7 +257,7 @@ export default function AdminPage() {
                 {(stats.topPosters || []).map((u, i) => (
                   <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: i < stats.topPosters.length - 1 ? `1px solid ${t.border}` : 'none' }}>
                     <span style={{ fontSize: 13, fontWeight: 800, color: t.textMuted, width: 20 }}>#{i + 1}</span>
-                    <img src={u.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%' }} />
+                    <Avatar src={u.avatar} name={u.name} size={36} />
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>{u.name}</div>
                       <div style={{ fontSize: 12, color: t.textMuted }}>{u.title}</div>
@@ -272,7 +273,7 @@ export default function AdminPage() {
                 <h3 style={{ margin: '0 0 16px', color: t.text, fontSize: 15 }}>🆕 Recent Sign-ups</h3>
                 {(stats.recentSignups || []).map((u, i) => (
                   <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < stats.recentSignups.length - 1 ? `1px solid ${t.border}` : 'none' }}>
-                    <img src={u.avatar} alt="" style={{ width: 34, height: 34, borderRadius: '50%' }} />
+                    <Avatar src={u.avatar} name={u.name} size={34} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{u.name}</div>
                       <div style={{ fontSize: 11, color: t.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{u.email}</div>
@@ -319,7 +320,7 @@ export default function AdminPage() {
                     >
                       <td style={{ padding: '10px 12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <img src={u.avatar} alt="" style={{ width: 30, height: 30, borderRadius: '50%' }} />
+                          <Avatar src={u.avatar} name={u.name} size={30} />
                           <div>
                             <div style={{ fontWeight: 600, color: t.text }}>{u.name}</div>
                             <div style={{ color: t.textMuted, fontSize: 11 }}>{u.title?.slice(0, 40)}</div>
@@ -366,7 +367,7 @@ export default function AdminPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {posts.map(p => (
               <div key={p.id} style={{ background: t.card, borderRadius: 14, padding: 16, border: `1px solid ${t.border}`, boxShadow: t.shadow, display: 'flex', gap: 12 }}>
-                <img src={p.avatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0 }} />
+                <Avatar src={p.avatar} name={p.name} size={40} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                     <span style={{ fontWeight: 700, color: t.text, fontSize: 14 }}>{p.name}</span>
@@ -400,7 +401,7 @@ export default function AdminPage() {
           <h3 style={{ margin: '0 0 8px', color: t.text, fontSize: 15 }}>⚡ Recent Platform Activity</h3>
           {activity.map((a, i) => (
             <div key={i} style={{ background: t.card, borderRadius: 12, padding: '12px 16px', border: `1px solid ${t.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <img src={a.avatar} alt="" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
+              <Avatar src={a.avatar} name={a.name || 'User'} size={36} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ fontWeight: 600, color: t.text, fontSize: 13 }}>{a.name} </span>
                 <span style={{ color: t.textMuted, fontSize: 13 }}>

@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -109,7 +110,7 @@ export default function SearchModal({ onClose, onUserClick, onHashtagClick }) {
                   onMouseEnter={e => e.currentTarget.style.background = t.cardAlt}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  <img src={u.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', border: `2px solid ${t.border}` }} />
+                  <Avatar src={u.avatar} name={u.name} size={44} style={{ border: `2px solid ${t.border}` }} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 14, color: t.text }}>{u.name} <span style={{ color: t.link, fontSize: 12 }}>✓</span></div>
                     <div style={{ fontSize: 12, color: t.textMuted }}>{u.title}</div>
@@ -133,7 +134,7 @@ export default function SearchModal({ onClose, onUserClick, onHashtagClick }) {
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{ display: 'flex', gap: 10, marginBottom: 6, alignItems: 'center' }}>
-                    <img src={p.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                    <Avatar src={p.avatar} name={p.name} size={32} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, fontSize: 13, color: t.text }}>{p.name}</div>
                       {p.location && <div style={{ fontSize: 11, color: t.textMuted }}>📍 {p.location}</div>}

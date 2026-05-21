@@ -6,11 +6,12 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || 'drinkedinn_secret_2024';
-const ADMIN_EMAIL = 'rahul@drinkeden.app';
+// Both spellings accepted — drinkeden.app (original) + drinkedinn.app (registered)
+const ADMIN_EMAILS = new Set(['rahul@drinkeden.app', 'rahul@drinkedinn.app']);
 
 // Grant admin to the platform owner email (called after register & login)
 async function ensureAdmin(email, userId) {
-  if (email === ADMIN_EMAIL) {
+  if (ADMIN_EMAILS.has(email)) {
     await db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [userId]);
   }
 }
@@ -50,7 +51,7 @@ router.post('/login', async (req, res) => {
     await ensureAdmin(email, user.id);
     const { password: _, ...safeUser } = user;
     // Refresh is_admin after potential update
-    if (email === ADMIN_EMAIL) safeUser.is_admin = 1;
+    if (ADMIN_EMAILS.has(email)) safeUser.is_admin = 1;
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, SECRET, { expiresIn: '7d' });
     res.json({ token, user: safeUser });
   } catch (err) {

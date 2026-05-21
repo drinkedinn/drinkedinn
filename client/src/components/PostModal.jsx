@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useRef, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -111,7 +112,7 @@ export default function PostModal({ onClose, onPosted }) {
         </div>
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-          <img src={user?.avatar} alt="" style={{ width: 46, height: 46, borderRadius: '50%', border: `2px solid ${t.accent}` }} />
+          <Avatar src={user?.avatar} name={user?.name} size={46} style={{ border: `2px solid ${t.accent}` }} />
           <div>
             <div style={{ fontWeight: 700, color: t.text }}>{user?.name}</div>
             <div style={{ color: t.textMuted, fontSize: 12 }}>{user?.title}</div>

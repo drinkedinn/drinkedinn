@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -72,13 +73,9 @@ export default function RightSidebar({ onUserClick, onHashtagClick }) {
         {suggestions.length === 0 && <div style={{ color: t.textFaint, fontSize: 13 }}>Loading…</div>}
         {suggestions.map(s => (
           <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <img src={s.avatar} alt="" onClick={() => onUserClick?.(s.id)} style={{
-              width: 42, height: 42, borderRadius: '50%', border: `2px solid ${t.border}`,
-              objectFit: 'cover', cursor: 'pointer', transition: 'border-color 0.2s',
-            }}
-              onMouseEnter={e => e.target.style.borderColor = t.accent}
-              onMouseLeave={e => e.target.style.borderColor = t.border}
-            />
+            <Avatar src={s.avatar} name={s.name} size={42} onClick={() => onUserClick?.(s.id)} style={{
+              border: `2px solid ${t.border}`, cursor: 'pointer',
+            }} />
             <div style={{ flex: 1, minWidth: 0 }} onClick={() => onUserClick?.(s.id)}>
               <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', color: t.text }}>{s.name}</div>
               <div style={{ color: t.textFaint, fontSize: 11 }}>{s.mutual > 0 ? `${s.mutual} mutual pour buddies` : 'New on DrinkedInn'}</div>

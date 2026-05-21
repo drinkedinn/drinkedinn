@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import Avatar from './Avatar';
 
 const DRINK_NAMES = { '🥃': 'Whisky', '🍷': 'Wine', '🍺': 'Beer', '🍹': 'Cocktails', '🍸': 'Gin', '🥂': 'Champagne', '🍶': 'Sake', '🧉': 'Mate' };
 
@@ -46,12 +47,9 @@ export default function LeftSidebar({ onProfileClick }) {
           <div style={{ position: 'absolute', inset: 0, background: 'url(https://images.unsplash.com/photo-1516997121675-4c2d1684aa3e?w=400&q=60) center/cover', opacity: 0.2 }} />
         </div>
         <div style={{ padding: '0 16px 16px', marginTop: -24 }}>
-          <img src={user?.avatar} alt="" style={{
-            width: 52, height: 52, borderRadius: '50%', border: `3px solid ${t.card}`,
-            marginBottom: 8, cursor: 'pointer', boxShadow: t.shadowMd, objectFit: 'cover',
-          }} onClick={onProfileClick}
-            onError={e => { e.target.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.name}`; }}
-          />
+          <Avatar src={user?.avatar} name={user?.name} size={52} onClick={onProfileClick} style={{
+            border: `3px solid ${t.card}`, marginBottom: 8, cursor: 'pointer', boxShadow: t.shadowMd,
+          }} />
           <div style={{ fontWeight: 700, fontSize: 15, color: t.text, cursor: 'pointer' }} onClick={onProfileClick}>
             {user?.name} <span style={{ color: t.link, fontSize: 13 }}>✓</span>
           </div>

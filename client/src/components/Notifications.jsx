@@ -1,3 +1,4 @@
+import Avatar from "./Avatar";
 import { useState, useEffect, useRef } from 'react';
 import api from '../api';
 import { useTheme } from '../context/ThemeContext';
@@ -89,7 +90,7 @@ export function NotificationBell() {
                   onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : t.accentSoft}
                 >
                   <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <img src={n.actor_avatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                    <Avatar src={n.actor_avatar} name={n.actor_name} size={40} />
                     <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 14 }}>{info.icon}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

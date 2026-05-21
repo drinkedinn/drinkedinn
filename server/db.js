@@ -265,7 +265,7 @@ async function init() {
 
   // Mark the platform owner as admin (by email — works regardless of user ID)
   try {
-    await run("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'");
+    await run("UPDATE users SET is_admin = 1 WHERE email IN ('rahul@drinkeden.app','rahul@drinkedinn.app')");
   } catch(e) {}
 
   // Seed demo data
