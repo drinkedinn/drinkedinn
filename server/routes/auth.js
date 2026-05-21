@@ -6,6 +6,14 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 const SECRET = process.env.JWT_SECRET || 'drinkedinn_secret_2024';
+const ADMIN_EMAIL = 'rahul@drinkeden.app';
+
+// Grant admin to the platform owner email (called after register & login)
+async function ensureAdmin(email, userId) {
+  if (email === ADMIN_EMAIL) {
+    await db.run('UPDATE users SET is_admin = 1 WHERE id = ?', [userId]);
+  }
+}
 
 router.post('/register', async (req, res) => {
   const { name, email, password, title } = req.body;
@@ -20,7 +28,8 @@ router.post('/register', async (req, res) => {
       [name, email, hash, title || 'DrinkedInn Member 🥃', avatar]
     );
 
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded FROM users WHERE id = ?', [lastInsertRowid]);
+    await ensureAdmin(email, lastInsertRowid);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin FROM users WHERE id = ?', [lastInsertRowid]);
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, SECRET, { expiresIn: '7d' });
     res.json({ token, user });
   } catch (err) {
@@ -38,7 +47,10 @@ router.post('/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
+    await ensureAdmin(email, user.id);
     const { password: _, ...safeUser } = user;
+    // Refresh is_admin after potential update
+    if (email === ADMIN_EMAIL) safeUser.is_admin = 1;
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, SECRET, { expiresIn: '7d' });
     res.json({ token, user: safeUser });
   } catch (err) {
