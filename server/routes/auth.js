@@ -10,6 +10,7 @@ const db = require('../db');
 const config = require('../config');
 const { requireAuth } = require('../middleware/auth');
 const { sendVerificationEmail } = require('../lib/mailer');
+const jurisdictions = require('../lib/jurisdictions');
 
 let z;
 try { ({ z } = require('zod')); } catch {}
@@ -37,9 +38,26 @@ function ageFromDob(dob) {
   return age;
 }
 
+// ── Local rules ─────────────────────────────────────────────────────────────
+// The client calls this before rendering the sign-up form so the age gate shows
+// the correct minimum for the visitor's country rather than a hardcoded 18.
+router.get('/rules', (req, res) => {
+  const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || req.query.country || '')
+    .toUpperCase().slice(0, 2);
+  const r = jurisdictions.rulesFor(country);
+  res.json({
+    country: r.country,
+    minAge: r.minAge,
+    available: !jurisdictions.isProhibited(country),
+    enhancedAssurance: r.assurance === 'enhanced',
+    // Deliberately not exposing ad eligibility to the client — that's a
+    // server-side delivery decision, not something a client should assert.
+  });
+});
+
 // ── Register ────────────────────────────────────────────────────────────────
 router.post('/register', async (req, res) => {
-  const { name, email, password, title, date_of_birth, ref: bodyRef } = req.body;
+  const { name, email, password, title, date_of_birth, country_code, ref: bodyRef } = req.body;
   const ref = bodyRef || req.query.ref || null;
 
   if (!name || !email || !password) {
@@ -49,12 +67,26 @@ router.post('/register', async (req, res) => {
     return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
-  // Age gate: only enforced when date_of_birth is provided
-  if (date_of_birth) {
-    const age = ageFromDob(date_of_birth);
-    if (age === null || age < config.minAge) {
-      return res.status(403).json({ error: `You must be at least ${config.minAge} to join.` });
-    }
+  // Jurisdiction drives the age gate — a flat 18 is wrong in most markets.
+  // Trust the client hint only as a starting point; the edge header wins.
+  const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || country_code || '').toUpperCase().slice(0, 2);
+  const rules = jurisdictions.rulesFor(country);
+
+  if (jurisdictions.isProhibited(country)) {
+    return res.status(451).json({ error: 'DrinkedInn is not available in your country.' });
+  }
+
+  if (!date_of_birth) {
+    return res.status(400).json({ error: 'Date of birth is required to confirm your age.' });
+  }
+  const age = ageFromDob(date_of_birth);
+  if (age === null) {
+    return res.status(400).json({ error: 'Enter your date of birth as YYYY-MM-DD.' });
+  }
+  if (age < rules.minAge) {
+    return res.status(403).json({
+      error: `You must be at least ${rules.minAge} to join from your country.`,
+    });
   }
 
   try {
@@ -77,14 +109,14 @@ router.post('/register', async (req, res) => {
     const { lastInsertRowid } = await db.run(
       `INSERT INTO users
          (name, email, password, title, avatar, onboarded,
-          referral_code, referred_by, date_of_birth,
+          referral_code, referred_by, date_of_birth, country_code,
           email_verified, verify_token, verify_sent_at,
           is_admin, token_version)
-       VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, 0, ?, ?, 0, 0)`,
+       VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?, 0, ?, ?, 0, 0)`,
       [
         name, email.toLowerCase(), hash,
-        title || 'DrinkedInn Member 🥃', avatar,
-        referralCode, referredBy, date_of_birth || null,
+        title || 'DrinkedInn Member', avatar,
+        referralCode, referredBy, date_of_birth, country || null,
         verifyToken, Date.now(),
       ]
     );

@@ -319,6 +319,13 @@ async function init() {
     `ALTER TABLE notifications ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
     // Lifecycle email — last day we sent a re-engagement digest (yyyy-mm-dd)
     `ALTER TABLE users ADD COLUMN last_digest_date TEXT`,
+    // Jurisdiction — drives the age gate, ad eligibility and assurance level.
+    `ALTER TABLE users ADD COLUMN country_code TEXT`,
+    // Age assurance: 0 self-declared, 1 age-estimated, 2 document-verified.
+    // We store only the outcome — never an identity document.
+    `ALTER TABLE users ADD COLUMN age_assurance_level INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN age_assurance_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN age_assurance_ref TEXT`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}
