@@ -2,12 +2,12 @@
 // Data transparency + the destructive account actions app stores require.
 
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Alert, StyleSheet, Linking } from 'react-native';
+import { View, Text, TextInput, ScrollView, Alert, StyleSheet, Linking } from 'react-native';
 import api, { ORIGIN } from '../../api';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { radius, type } from '../../theme/tokens';
-import { Screen, Header, Icon, useToast } from '../../components/ui';
+import { Screen, Header, Icon, Button, useToast } from '../../components/ui';
 import { SettingsGroup, SettingsRow } from '../../components/SettingsRow';
 
 const FACTS = [
@@ -22,6 +22,8 @@ export default function PrivacyScreen({ navigation }) {
   const { user, logout } = useAuth();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState('');
 
   const requestData = () => {
     Alert.alert(
@@ -41,40 +43,27 @@ export default function PrivacyScreen({ navigation }) {
     );
   };
 
-  const deleteAccount = () => {
+  const confirmDelete = async () => {
+    if (!password) { toast?.show('Enter your password to confirm.', 'error'); return; }
+    setBusy(true);
+    try {
+      // axios needs `data` for a DELETE body.
+      await api.delete('/users/me', { data: { password } });
+      toast?.show('Your account has been deleted.', 'success');
+      logout();
+    } catch (e) {
+      toast?.show(e.safeMessage || 'Could not delete the account.', 'error');
+      setBusy(false);
+    }
+  };
+
+  const startDelete = () => {
     Alert.alert(
       'Delete account',
-      'This permanently removes your profile, pours, comments and connections. It cannot be undone.',
+      'This permanently erases your profile, pours, comments, photos and connections. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () =>
-            Alert.alert('Are you certain?', 'Type-of-no-return. Your account and all content will be erased.', [
-              { text: 'Keep my account', style: 'cancel' },
-              {
-                text: 'Delete forever',
-                style: 'destructive',
-                onPress: async () => {
-                  setBusy(true);
-                  try {
-                    await api.delete('/users/me');
-                    toast?.show('Account deleted.', 'success');
-                    logout();
-                  } catch (e) {
-                    // Endpoint may not exist yet — fall back to a support request.
-                    Linking.openURL(
-                      `mailto:privacy@drinkedinn.app?subject=Account%20deletion%20request&body=Please%20delete%20the%20account%20for%20${encodeURIComponent(user?.email || '')}.`
-                    ).catch(() => {});
-                    toast?.show('We’ve opened a deletion request for you.', 'info');
-                  } finally {
-                    setBusy(false);
-                  }
-                },
-              },
-            ]),
-        },
+        { text: 'Continue', style: 'destructive', onPress: () => setConfirming(true) },
       ]
     );
   };
@@ -107,9 +96,46 @@ export default function PrivacyScreen({ navigation }) {
           />
         </SettingsGroup>
 
-        <SettingsGroup title="Danger zone" footer="Deleting your account is permanent and immediate.">
-          <SettingsRow icon="trash-outline" label="Delete my account" destructive onPress={deleteAccount} disabled={busy} last />
-        </SettingsGroup>
+        {confirming ? (
+          <View style={{ marginBottom: 26 }}>
+            <Text style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginBottom: 8, marginLeft: 20 }]}>
+              Danger zone
+            </Text>
+            <View style={[styles.card, { borderColor: t.danger }]}>
+              <Text style={[type.h3, { color: t.danger, marginBottom: 6 }]}>Confirm deletion</Text>
+              <Text style={[type.caption, { color: t.textSecondary, lineHeight: 18, marginBottom: 14 }]}>
+                Enter your password to permanently erase your account. Everything you've posted goes
+                with it, and this can't be undone.
+              </Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                placeholder="Your password"
+                placeholderTextColor={t.textMuted}
+                secureTextEntry
+                autoCapitalize="none"
+                autoComplete="current-password"
+                style={{
+                  backgroundColor: t.surfaceAlt, borderColor: t.border, borderWidth: 1.4,
+                  borderRadius: radius.sm, paddingHorizontal: 13, paddingVertical: 12,
+                  color: t.text, fontSize: 15, marginBottom: 12,
+                }}
+              />
+              <Button label="Delete my account forever" variant="danger" full loading={busy} onPress={confirmDelete} />
+              <Button
+                label="Keep my account"
+                variant="secondary"
+                full
+                style={{ marginTop: 8 }}
+                onPress={() => { setConfirming(false); setPassword(''); }}
+              />
+            </View>
+          </View>
+        ) : (
+          <SettingsGroup title="Danger zone" footer="Deleting your account is permanent and immediate.">
+            <SettingsRow icon="trash-outline" label="Delete my account" destructive onPress={startDelete} disabled={busy} last />
+          </SettingsGroup>
+        )}
       </ScrollView>
     </Screen>
   );
