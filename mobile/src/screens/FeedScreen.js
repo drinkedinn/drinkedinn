@@ -148,8 +148,8 @@ export default function FeedScreen({ navigation }) {
       >
         <View style={styles.brandRow}>
           <Text style={[type.h1, { color: t.text }]}>Drinked</Text>
-          <View style={[styles.chip, { backgroundColor: t.blue }]}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17, letterSpacing: -0.3 }}>Inn</Text>
+          <View style={[styles.chip, { backgroundColor: t.accent }]}>
+            <Text style={{ color: t.textOnAccent, fontWeight: '800', fontSize: 17, letterSpacing: -0.3 }}>Inn</Text>
           </View>
         </View>
         <View style={styles.headerActions}>

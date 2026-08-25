@@ -8,14 +8,14 @@ const db = require('./db');
 
 // ── CONTENT LIBRARY ──────────────────────────────────────────────────────────
 const POSTS = [
-  { content: `My manager just said "let's take this offline" about a topic that was ALREADY offline.\n\nCurrently processing this over a large whisky.\n\n#corporatelife #MondayMood 🥃`, drink: '🥃', location: '' },
+  { content: `Long day. Walked past the usual place, went in anyway, and ran into two people I hadn't seen in a year.\n\nStayed an hour longer than planned. Best decision of the week.\n\n#unplanned #goodcompany`, drink: '🥃', location: '' },
   { content: `Annual review feedback:\n"You need to be more proactive."\n\nI proactively ordered a second drink. Growth mindset activated.\n\n#performance #careerdevelopment 🍺`, drink: '🍺', location: '' },
-  { content: `LinkedIn post I almost wrote:\n"Humbled and excited to announce I survived another stand-up without saying anything meaningful."\n\nInstead I'm here. Cheers. 🥂\n\n#authentic #nosynergy`, drink: '🥂', location: '' },
-  { content: `The 5 stages of a Monday:\n1. Denial (hit snooze 4x)\n2. Anger (saw 47 unread emails)\n3. Bargaining ("just one coffee")\n4. Depression (it's 10am)\n5. Acceptance (it's now 6pm and this gin is helping)\n\n🍸 #mondayvibes`, drink: '🍸', location: '' },
+  { content: `Somebody asked what I did this weekend and I actually had an answer for once.\n\nA long table, six friends, nowhere to be.\n\n🥂 More of that.\n\n#weekend #thetable`, drink: '🥂', location: '' },
+  { content: `The best hour of the week is the one right after you close the laptop and before anyone decides where to go.\n\nEverything is still possible in that hour.\n\n🍸 #fridayevening`, drink: '🍸', location: '' },
   { content: `Hot take: "let's circle back" is just corporate for "I hope you forget about this."\n\nI never forget. Especially after whisky.\n\n🥃 #circlingback #corporatespeak`, drink: '🥃', location: '' },
   { content: `Our company has 14 values.\n\nI can only remember 2: Free beer Fridays and unlimited leave (which nobody takes).\n\nCurrently practising value #1. 🍺\n\n#companyculture`, drink: '🍺', location: '' },
-  { content: `Someone put "innovative thinker" on their LinkedIn.\n\nTheir most recent innovation: a new way to reply-all to emails nobody asked to be CC'd on.\n\n🥃 Whisky helps me cope. #linkedinlunatics`, drink: '🥃', location: '' },
-  { content: `Performance review season tip:\n\nFor every buzzword your manager uses, take a mental sip.\n\nYou'll be too drunk to care about your rating by slide 3. 🍺\n\n#performancereview #survival`, drink: '🍺', location: '' },
+  { content: `The bartender remembered my order from three months ago.\n\nI have colleagues who don't remember my name.\n\nThis is why I keep coming back here. 🥃\n\n#localspot #regulars`, drink: '🥃', location: '' },
+  { content: `Took the long way home tonight. Sat outside. Watched the street for twenty minutes doing absolutely nothing.\n\nTurns out that's the whole trick.\n\n🍺 #slowdown #eveninginn`, drink: '🍺', location: '' },
   { content: `"We need to be more data-driven."\n\nSaid the person who just made a ₹2 crore decision based on a gut feeling in a cab.\n\n🥃 I have data that says whisky > gut feelings. #analytics`, drink: '🥃', location: '' },
   { content: `Corporate email translation guide:\n\n"As per my last email" = READ. THE. THREAD.\n"Going forward" = you messed up\n"Great question" = I have no idea\n"Let's align" = I don't trust you\n\n🍸 Cheers to the decoded life. #corporatelife`, drink: '🍸', location: '' },
   { content: `First time trying a Japanese whisky tonight.\n\nYamazaki 12. The nose literally stopped my conversation mid-sentence.\n\nStrawberry, oak, a hint of something I can't name but would happily chase forever. 🇯🇵🥃\n\n#japanesewhisky #yamazaki`, drink: '🥃', location: 'Tokyo, Japan', lat: 35.6762, lng: 139.6503 },

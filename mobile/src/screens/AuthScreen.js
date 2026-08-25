@@ -146,14 +146,14 @@ export default function AuthScreen() {
             <View style={styles.brand}>
               <View style={styles.brandRow}>
                 <Text style={[type.display, { color: t.text }]}>Drinked</Text>
-                <View style={[styles.chip, { backgroundColor: t.blue }]}>
-                  <Text style={styles.chipText}>Inn</Text>
+                <View style={[styles.chip, { backgroundColor: t.accent }]}>
+                  <Text style={[styles.chipText, { color: t.textOnAccent }]}>Inn</Text>
                 </View>
               </View>
               <Text style={[type.body, { color: t.textSecondary, textAlign: 'center', marginTop: 10, lineHeight: 22 }]}>
                 {isRegister
-                  ? 'The network where “networking” means\nsharing something worth drinking.'
-                  : 'Welcome back. The bar’s still open.'}
+                  ? 'Every good story starts at the inn.\nPull up a chair.'
+                  : 'Welcome back. The inn’s still open.'}
               </Text>
             </View>
 
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   brand: { alignItems: 'center', marginBottom: 28 },
   brandRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   chip: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 9 },
-  chipText: { color: '#fff', fontWeight: '800', fontSize: 26, letterSpacing: -0.6 },
+  chipText: { fontWeight: '800', fontSize: 26, letterSpacing: -0.6 },
   switcher: { flexDirection: 'row', borderRadius: radius.pill, padding: 4, marginBottom: 24 },
   switchBtn: { flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: radius.pill, borderWidth: StyleSheet.hairlineWidth, borderColor: 'transparent' },
   meterRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: -6, marginBottom: 14 },

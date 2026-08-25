@@ -183,7 +183,7 @@ export default function Splash({ onDone }) {
           DrinkedInn
         </div>
         <div style={{ color: t.textMuted, fontSize: 13, fontStyle: 'italic', letterSpacing: '0.3px' }}>
-          Where Professionals Actually Unwind 🥃
+          Every good story starts at the inn
         </div>
       </div>
 

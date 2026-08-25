@@ -10,10 +10,10 @@ export default function Logo({ size = 'md', onClick }) {
       </span>
       <span style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0a66c2, #1d8fe8)',
+        background: 'linear-gradient(135deg, #C8831F, #E0A544)',
         color: '#fff', fontWeight: 900, fontSize: big ? 28 : 18,
         borderRadius: big ? 8 : 5, padding: big ? '4px 10px' : '2px 7px',
-        letterSpacing: -0.5, boxShadow: '0 2px 12px rgba(10,102,194,0.3)',
+        letterSpacing: -0.5, boxShadow: '0 2px 12px rgba(200,131,31,0.28)',
       }}>
         Inn 🍺
       </span>

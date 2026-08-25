@@ -1,6 +1,6 @@
 // src/theme.js
 // A single premium, committed dark theme — deep bar-at-night charcoal-navy with
-// whisky amber as the star accent and LinkedIn blue as the secondary pun.
+// warm amber as the star accent and a deep hospitality blue as the secondary.
 
 export const colors = {
   bg: '#0A0B12',
