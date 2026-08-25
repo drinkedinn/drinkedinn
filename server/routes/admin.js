@@ -1,6 +1,8 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { deleteUserCompletely } = require('../lib/deleteUser');
+const { logAdminAction } = require('../lib/audit');
 
 const router = express.Router();
 
@@ -83,18 +85,21 @@ router.get('/users', async (req, res) => {
 
 router.delete('/users/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  if (id === 1) return res.status(400).json({ error: 'Cannot delete admin' });
+  if (id === req.user.id) {
+    return res.status(400).json({ error: 'Delete your own account from Settings instead.' });
+  }
   try {
-    await db.run('DELETE FROM connections WHERE user_id = ? OR target_id = ?', [id, id]);
-    await db.run('DELETE FROM cheers WHERE user_id = ?', [id]);
-    await db.run('DELETE FROM comments WHERE user_id = ?', [id]);
-    await db.run('DELETE FROM notifications WHERE user_id = ? OR actor_id = ?', [id, id]);
-    await db.run('DELETE FROM messages WHERE sender_id = ? OR receiver_id = ?', [id, id]);
-    await db.run('DELETE FROM stories WHERE user_id = ?', [id]);
-    await db.run('DELETE FROM posts WHERE user_id = ?', [id]);
-    await db.run('DELETE FROM users WHERE id = ?', [id]);
+    const target = await db.get('SELECT is_admin FROM users WHERE id = ?', [id]);
+    if (!target) return res.status(404).json({ error: 'User not found' });
+    if (target.is_admin === 1) {
+      return res.status(403).json({ error: 'Demote this admin before deleting the account.' });
+    }
+    // Same erasure path as self-service deletion — no orphaned rows left behind.
+    await deleteUserCompletely(id);
+    await logAdminAction(req.user.id, 'user.delete', { targetType: 'user', targetId: id });
     res.json({ ok: true });
   } catch (err) {
+    console.error('[admin] delete user failed:', err.message);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

@@ -1,9 +1,45 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const auth = require('../middleware/auth');
 const { notify } = require('../lib/notify');
+const { deleteUserCompletely } = require('../lib/deleteUser');
 
 const router = express.Router();
+
+// Permanently erase the signed-in account and everything attached to it.
+// Required by the App Store and Play Store for any app that allows sign-up,
+// and by GDPR/CCPA. Re-authenticates first — this is irreversible.
+router.delete('/me', auth, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) {
+    return res.status(400).json({ error: 'Enter your password to confirm deletion.' });
+  }
+
+  try {
+    const user = await db.get('SELECT id, password, is_admin FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'That password is incorrect.' });
+
+    // Guard against the platform locking itself out of its own admin panel.
+    if (user.is_admin === 1) {
+      const admins = await db.get('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1');
+      if ((admins?.c || 0) <= 1) {
+        return res.status(409).json({
+          error: 'This is the only admin account. Promote another admin before deleting it.',
+        });
+      }
+    }
+
+    await deleteUserCompletely(user.id);
+    res.json({ ok: true, deleted: true });
+  } catch (err) {
+    console.error('[users] delete failed:', err.message);
+    res.status(500).json({ error: 'Could not delete the account. Contact support.' });
+  }
+});
 
 router.get('/me', auth, async (req, res) => {
   try {
