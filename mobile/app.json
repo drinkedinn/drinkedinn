@@ -42,7 +42,8 @@
           "faceIDPermission": "DrinkedInn uses Face ID to unlock the app when app lock is turned on."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-web-browser"
     ]
   }
 }

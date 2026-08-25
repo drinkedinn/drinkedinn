@@ -349,6 +349,24 @@ async function init() {
        expires_at INTEGER NOT NULL,
        used INTEGER NOT NULL DEFAULT 0
      )`,
+    // Age assurance attempts. We record the OUTCOME of a check and the
+    // provider's opaque reference — never a document, image, or ID number.
+    `CREATE TABLE IF NOT EXISTS age_checks (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       provider TEXT NOT NULL,
+       provider_ref TEXT NOT NULL,
+       method TEXT,
+       status TEXT NOT NULL DEFAULT 'pending',
+       age_band TEXT,
+       level INTEGER NOT NULL DEFAULT 0,
+       country_code TEXT,
+       created_at INTEGER NOT NULL,
+       resolved_at INTEGER
+     )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_agecheck_ref ON age_checks (provider, provider_ref)`,
+    `CREATE INDEX IF NOT EXISTS idx_agecheck_user ON age_checks (user_id, status)`,
+
     // Blocking — required by Apple guideline 1.2 and Google Play's UGC policy.
     // blocker_id no longer sees, or is seen by, blocked_id anywhere in the app.
     `CREATE TABLE IF NOT EXISTS blocked_users (

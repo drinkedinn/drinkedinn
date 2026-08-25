@@ -118,6 +118,7 @@ export default function AccountScreen({ navigation }) {
             value={lockOn ? 'App lock on' : bioAvailable ? 'App lock off' : undefined}
             onPress={() => navigation.navigate('Security')}
           />
+          <SettingsRow icon="person-circle-outline" label="Age verification" onPress={() => navigation.navigate('AgeVerification')} />
           <SettingsRow icon="shield-checkmark-outline" label="Privacy & data" onPress={() => navigation.navigate('Privacy')} last />
         </SettingsGroup>
 

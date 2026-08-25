@@ -86,7 +86,13 @@ app.use(cors({
   origin: (origin, cb) => cb(null, !origin || allowedOrigins.some(o => origin.startsWith(o))),
   credentials: true
 }));
-app.use(express.json());
+// Keep the exact received bytes. Webhook signatures are computed over the raw
+// body — re-serialising the parsed object would change it and every signature
+// check would fail.
+app.use(express.json({
+  limit: '1mb',
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use('/uploads', express.static(uploadsDir));
 
 // Wait for DB to be ready before processing any request (Vercel cold start)
@@ -128,6 +134,7 @@ app.use('/api/feed',        require('./routes/feed'));
 app.use('/api/onboarding',  require('./routes/onboarding'));
 app.use('/api/jobs',        require('./routes/jobs'));
 app.use('/api/blocks',      require('./routes/blocks'));
+app.use('/api/age',         require('./routes/age'));
 
 // ===== AI Agent System =====
 const Orchestrator = require('./agents/orchestrator');

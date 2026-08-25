@@ -22,6 +22,7 @@ import SecurityScreen from '../screens/account/SecurityScreen';
 import AppearanceScreen from '../screens/account/AppearanceScreen';
 import NotificationSettingsScreen from '../screens/account/NotificationSettingsScreen';
 import PrivacyScreen from '../screens/account/PrivacyScreen';
+import AgeVerificationScreen from '../screens/account/AgeVerificationScreen';
 import { HelpScreen, ResponsibleScreen, LegalScreen } from '../screens/account/InfoScreens';
 
 import TabBar from './TabBar';
@@ -89,6 +90,7 @@ export default function RootNavigator() {
           <Stack.Screen name="Appearance" component={AppearanceScreen} />
           <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen} />
           <Stack.Screen name="Privacy" component={PrivacyScreen} />
+          <Stack.Screen name="AgeVerification" component={AgeVerificationScreen} />
           <Stack.Screen name="Help" component={HelpScreen} />
           <Stack.Screen name="Responsible" component={ResponsibleScreen} />
           <Stack.Screen name="Legal" component={LegalScreen} />
