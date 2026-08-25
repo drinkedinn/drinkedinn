@@ -342,6 +342,17 @@ async function init() {
        expires_at INTEGER NOT NULL,
        used INTEGER NOT NULL DEFAULT 0
      )`,
+    // Blocking — required by Apple guideline 1.2 and Google Play's UGC policy.
+    // blocker_id no longer sees, or is seen by, blocked_id anywhere in the app.
+    `CREATE TABLE IF NOT EXISTS blocked_users (
+       blocker_id INTEGER NOT NULL,
+       blocked_id INTEGER NOT NULL,
+       created_at INTEGER NOT NULL,
+       PRIMARY KEY (blocker_id, blocked_id)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_blocked_by ON blocked_users (blocker_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_blocked_of ON blocked_users (blocked_id)`,
+
     // Engagement engine — Web Push subscriptions (one row per device/endpoint)
     `CREATE TABLE IF NOT EXISTS push_subscriptions (
        id INTEGER PRIMARY KEY AUTOINCREMENT,

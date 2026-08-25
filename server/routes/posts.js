@@ -3,6 +3,8 @@ const db = require('../db');
 const auth = require('../middleware/auth');
 const { notify: notifyEngine } = require('../lib/notify');
 const { touchStreak } = require('../lib/streaks');
+const { screenContent } = require('../lib/contentFilter');
+const { blockedIds, filterBlocked } = require('../lib/blocking');
 
 const router = express.Router();
 
@@ -37,8 +39,9 @@ const bumpStreak = async (userId, action) => {
 
 router.get('/', auth, async (req, res) => {
   try {
-    const posts = await db.all(POST_QUERY('ORDER BY p.created_at DESC LIMIT 50'), [req.user.id, req.user.id, req.user.id]);
-    res.json(posts);
+    const posts = await db.all(POST_QUERY('ORDER BY p.created_at DESC LIMIT 80'), [req.user.id, req.user.id, req.user.id]);
+    const blocked = await blockedIds(req.user.id);
+    res.json(filterBlocked(posts, blocked).slice(0, 50));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
@@ -107,6 +110,10 @@ router.get('/:id(\\d+)', auth, async (req, res) => {
 router.post('/', auth, async (req, res) => {
   const { content, drink, location, lat, lng, image_url, poll_options } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
+
+  // Pre-publish moderation gate (Apple 1.2 / 1.4.3, Google Play UGC policy).
+  const screen = screenContent(`${content} ${location || ''}`);
+  if (!screen.allowed) return res.status(422).json({ error: screen.reason });
   const hasPoll = Array.isArray(poll_options) && poll_options.filter(o => o?.trim()).length >= 2;
   try {
     const { lastInsertRowid } = await db.run(
@@ -175,6 +182,10 @@ router.get('/:id/comments', auth, async (req, res) => {
 router.post('/:id/comments', auth, async (req, res) => {
   const { content } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'Comment required' });
+
+  const screen = screenContent(content);
+  if (!screen.allowed) return res.status(422).json({ error: screen.reason });
+
   try {
     const { lastInsertRowid } = await db.run('INSERT INTO comments (user_id, post_id, content) VALUES (?, ?, ?)', [req.user.id, req.params.id, content.trim()]);
     const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [req.params.id]);

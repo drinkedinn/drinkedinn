@@ -127,6 +127,7 @@ app.use('/api/notifprefs',  require('./routes/notifprefs'));
 app.use('/api/feed',        require('./routes/feed'));
 app.use('/api/onboarding',  require('./routes/onboarding'));
 app.use('/api/jobs',        require('./routes/jobs'));
+app.use('/api/blocks',      require('./routes/blocks'));
 
 // ===== AI Agent System =====
 const Orchestrator = require('./agents/orchestrator');

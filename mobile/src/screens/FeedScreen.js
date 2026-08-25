@@ -14,6 +14,7 @@ import { radius, type } from '../theme/tokens';
 import { Screen, Icon, Avatar, Bounce, EmptyState, FadeIn, useToast } from '../components/ui';
 import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
+import usePostActions from '../hooks/usePostActions';
 import StoryRow from '../components/home/StoryRow';
 import Segmented from '../components/home/Segmented';
 import FeaturedCard from '../components/home/FeaturedCard';
@@ -123,6 +124,15 @@ export default function FeedScreen({ navigation }) {
 
   const headerElevation = scrollY.interpolate({ inputRange: [0, 24], outputRange: [0, 1], extrapolate: 'clamp' });
 
+  // Blocking or deleting removes the post from view immediately, and anything
+  // else by that author, so the action feels like it actually took effect.
+  const { openMenu } = usePostActions({
+    onRemoved: (post) =>
+      setPosts((list) =>
+        list.filter((p) => (p.id === post.id ? false : p.user_id !== post.user_id || p.user_id === user?.id))
+      ),
+  });
+
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
     id === user?.id ? navigation.navigate('Account') : navigation.navigate('User', { userId: id });
@@ -181,7 +191,7 @@ export default function FeedScreen({ navigation }) {
           }
           renderItem={({ item, index }) => (
             <FadeIn index={index}>
-              <PostCard post={item} onOpen={openPost} onProfile={openProfile} />
+              <PostCard post={item} onOpen={openPost} onProfile={openProfile} onReport={openMenu} />
             </FadeIn>
           )}
           onEndReachedThreshold={0.5}
