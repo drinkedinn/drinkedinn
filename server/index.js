@@ -9,6 +9,15 @@ const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
 
+// Required for correct client IPs in rate limiting behind Vercel's proxy
+app.set('trust proxy', 1);
+
+// Security headers (second layer behind vercel.json)
+try {
+  const helmet = require('helmet');
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
+} catch {}
+
 // WebSocket for agent real-time updates
 let wss;
 try {
@@ -19,11 +28,35 @@ try {
 }
 
 // Rate limiting (optional dep)
+// Key by the real client IP from X-Forwarded-For (Vercel's edge sets this).
+// Without a custom key generator the in-memory limiter buckets ALL users under
+// one key on serverless, which locks everyone out once the ceiling is hit.
 try {
-  const { rateLimit } = require('express-rate-limit');
-  app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests.' } }));
-  app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Too many auth attempts.' } }));
-} catch {}
+  const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
+  const clientIp = (req) => {
+    const xff = req.headers['x-forwarded-for'];
+    const ip = xff ? String(xff).split(',')[0].trim() : (req.ip || 'unknown');
+    return ipKeyGenerator ? ipKeyGenerator(ip) : ip;
+  };
+  // Generous global ceiling — per IP. Brute-force is handled by account lockout.
+  app.use('/api', rateLimit({
+    windowMs: 15 * 60 * 1000, max: 1000,
+    standardHeaders: true, legacyHeaders: false,
+    keyGenerator: clientIp,
+    message: { error: 'Too many requests.' },
+  }));
+  // Tighter, but only on the credential endpoints (login/register), per IP.
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, max: 40,
+    standardHeaders: true, legacyHeaders: false,
+    keyGenerator: clientIp,
+    message: { error: 'Too many auth attempts. Try again shortly.' },
+  });
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+} catch (e) {
+  console.warn('⚠️  rate limiter setup failed:', e.message);
+}
 
 // On Vercel, /var/task is read-only — use /tmp/uploads instead
 const uploadsDir = process.env.VERCEL
@@ -85,7 +118,15 @@ app.use('/api/groups',      require('./routes/groups'));
 app.use('/api/messages',    require('./routes/messages'));
 app.use('/api/challenges',  require('./routes/challenges'));
 app.use('/api/badges',      require('./routes/badges'));
+app.use('/api/sommelier',   require('./routes/sommelier'));
 app.use('/api/admin',       require('./routes/admin'));
+app.use('/api/referrals',   require('./routes/referrals'));
+app.use('/api/reports',     require('./routes/reports'));
+app.use('/api/featured',    require('./routes/featured'));
+app.use('/api/notifprefs',  require('./routes/notifprefs'));
+app.use('/api/feed',        require('./routes/feed'));
+app.use('/api/onboarding',  require('./routes/onboarding'));
+app.use('/api/jobs',        require('./routes/jobs'));
 
 // ===== AI Agent System =====
 const Orchestrator = require('./agents/orchestrator');
@@ -138,11 +179,6 @@ if (!process.env.VERCEL) {
 
     // Seed 50 demo accounts on first run (after db is fully initialized)
     try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
-
-    // Grant admin to platform owner — runs AFTER seed so the user exists
-    try {
-      await db.run("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'");
-    } catch(e) {}
 
     // Start auto-posting engine (demo accounts post daily)
     try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }

@@ -48,4 +48,37 @@ router.post('/read-all', auth, async (req, res) => {
   }
 });
 
+// ── Web Push subscription management (engagement engine) ──────────────────────
+router.post('/push/subscribe', auth, async (req, res) => {
+  const { endpoint, keys } = req.body || {};
+  if (!endpoint || !keys?.p256dh || !keys?.auth) {
+    return res.status(400).json({ error: 'Invalid subscription' });
+  }
+  try {
+    await db.run(
+      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, created_at)
+         VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(endpoint) DO UPDATE SET user_id = excluded.user_id`,
+      [req.user.id, endpoint, keys.p256dh, keys.auth, Date.now()]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to subscribe' });
+  }
+});
+
+router.post('/push/unsubscribe', auth, async (req, res) => {
+  const { endpoint } = req.body || {};
+  if (endpoint) await db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint]);
+  res.json({ ok: true });
+});
+
+// Client reports its timezone offset so quiet hours work per-user.
+router.put('/tz', auth, async (req, res) => {
+  const off = parseInt(req.body.tz_offset_minutes, 10);
+  if (Number.isNaN(off)) return res.status(400).json({ error: 'bad offset' });
+  await db.run('UPDATE users SET tz_offset_minutes = ? WHERE id = ?', [off, req.user.id]);
+  res.json({ ok: true });
+});
+
 module.exports = router;

@@ -7,9 +7,47 @@
       "maxDuration": 30
     }
   },
+  "headers": [
+    {
+      "//": "Hashed build assets are immutable — let Cloudflare hold them for a year so these never hit Vercel twice.",
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "//": "Static files at the root: cache at the edge, revalidate in the browser.",
+      "source": "/(.*)\\.(png|jpg|jpeg|gif|webp|svg|ico|woff|woff2|ttf|mp4|webm)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=2592000, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "//": "API responses are per-user — never let a shared cache store them.",
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "private, no-store" },
+        { "key": "Vary", "value": "Authorization" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
+        { "key": "X-Content-Type-Options",    "value": "nosniff" },
+        { "key": "X-Frame-Options",           "value": "DENY" },
+        { "key": "Referrer-Policy",           "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy",        "value": "geolocation=(self), camera=(), microphone=()" },
+        { "key": "Content-Security-Policy",    "value": "default-src 'self'; img-src 'self' data: https:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/api/:path*",     "destination": "/api/index.js" },
     { "source": "/uploads/:path*", "destination": "/api/index.js" },
     { "source": "/:path*",         "destination": "/index.html" }
+  ],
+  "crons": [
+    { "path": "/api/jobs/lifecycle", "schedule": "0 16 * * *" }
   ]
 }

@@ -1,22 +1,16 @@
 const express = require('express');
 const db = require('../db');
-const auth = require('../middleware/auth');
+const { requireAuth, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Admin-only middleware — checks is_admin flag, not hardcoded ID
-const adminOnly = (req, res, next) => {
-  if (!req.user.is_admin) return res.status(403).json({ error: 'Admin only' });
-  next();
-};
-
-router.use(auth, adminOnly);
+router.use(requireAuth, requireAdmin);
 
 // ─── Platform Stats ────────────────────────────────────────────────────────────
 router.get('/stats', async (req, res) => {
   try {
     const today = new Date().toISOString().slice(0, 10);
-    const [usersRow, postsRow, cheersRow, commentsRow, connectionsRow, messagesRow, storiesRow, postsTodayRow, usersTodayRow] = await Promise.all([
+    const [usersRow, postsRow, cheersRow, commentsRow, connectionsRow, messagesRow, storiesRow, postsTodayRow, usersTodayRow, groupsRow, challengesRow, reportsRow] = await Promise.all([
       db.get('SELECT COUNT(*) as c FROM users'),
       db.get('SELECT COUNT(*) as c FROM posts'),
       db.get('SELECT COUNT(*) as c FROM cheers'),
@@ -26,6 +20,9 @@ router.get('/stats', async (req, res) => {
       db.get('SELECT COUNT(*) as c FROM stories'),
       db.get('SELECT COUNT(*) as c FROM posts WHERE date(created_at) = ?', [today]),
       db.get('SELECT COUNT(*) as c FROM users WHERE date(created_at) = ?', [today]),
+      db.get('SELECT COUNT(*) as c FROM groups').catch(() => ({ c: 0 })),
+      db.get('SELECT COUNT(*) as c FROM challenges').catch(() => ({ c: 0 })),
+      db.get("SELECT COUNT(*) as c FROM reports WHERE status = 'pending'").catch(() => ({ c: 0 })),
     ]);
 
     const topPosters = await db.all(`
@@ -49,6 +46,9 @@ router.get('/stats', async (req, res) => {
       stories: storiesRow?.c || 0,
       postsToday: postsTodayRow?.c || 0,
       usersToday: usersTodayRow?.c || 0,
+      groups: groupsRow?.c || 0,
+      challenges: challengesRow?.c || 0,
+      pendingReports: reportsRow?.c || 0,
       topPosters,
       recentSignups
     });
@@ -65,6 +65,7 @@ router.get('/users', async (req, res) => {
   try {
     const users = await db.all(`
       SELECT u.id, u.name, u.email, u.title, u.avatar, u.onboarded, u.created_at,
+        u.badge, u.verified, u.premium,
         (SELECT COUNT(*) FROM posts WHERE user_id = u.id) as post_count,
         (SELECT COUNT(*) FROM connections WHERE user_id = u.id) as connection_count,
         (SELECT COUNT(*) FROM cheers WHERE user_id = u.id) as cheer_count
@@ -144,6 +145,37 @@ router.get('/activity', async (req, res) => {
     res.json(all);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch activity' });
+  }
+});
+
+// ─── User management actions ──────────────────────────────────────────────────
+router.put('/users/:id/badge', async (req, res) => {
+  const { badge } = req.body; // e.g. '🏆', '⭐', '🔥', '🥇', null to remove
+  try {
+    await db.run('UPDATE users SET badge = ? WHERE id = ?', [badge || null, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update badge' });
+  }
+});
+
+router.put('/users/:id/verify', async (req, res) => {
+  const { verified } = req.body; // 1 or 0
+  try {
+    await db.run('UPDATE users SET verified = ? WHERE id = ?', [verified ? 1 : 0, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update verification' });
+  }
+});
+
+router.put('/users/:id/premium', async (req, res) => {
+  const { premium } = req.body; // 1 or 0
+  try {
+    await db.run('UPDATE users SET premium = ? WHERE id = ?', [premium ? 1 : 0, req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update premium status' });
   }
 });
 

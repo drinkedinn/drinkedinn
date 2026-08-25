@@ -248,6 +248,41 @@ async function init() {
       data_json TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS referrals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_id INTEGER NOT NULL,
+      code TEXT UNIQUE NOT NULL,
+      referred_id INTEGER DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (referrer_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id INTEGER NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (reporter_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS featured_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id INTEGER NOT NULL UNIQUE,
+      featured_date TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (post_id) REFERENCES posts(id)
+    );
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      user_id INTEGER PRIMARY KEY,
+      cheers INTEGER DEFAULT 1,
+      comments INTEGER DEFAULT 1,
+      connections INTEGER DEFAULT 1,
+      messages INTEGER DEFAULT 1,
+      challenges INTEGER DEFAULT 1,
+      digest_email INTEGER DEFAULT 1,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
   `);
 
   // Safe migrations for existing DBs
@@ -258,15 +293,72 @@ async function init() {
     `ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`,
     `ALTER TABLE posts ADD COLUMN lat REAL DEFAULT NULL`,
     `ALTER TABLE posts ADD COLUMN lng REAL DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN referral_code TEXT DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN referred_by INTEGER DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN badge TEXT DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN premium INTEGER DEFAULT 0`,
+    // Security hardening columns
+    `ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN verify_token TEXT`,
+    `ALTER TABLE users ADD COLUMN verify_sent_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN date_of_birth TEXT`,
+    `ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN failed_logins INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN locked_until INTEGER`,
+    // Engagement engine — streaks (community participation, NOT drink volume)
+    `ALTER TABLE users ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN longest_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN streak_date TEXT`,
+    `ALTER TABLE users ADD COLUMN last_active_date TEXT`,
+    // Engagement engine — responsible push throttle state
+    `ALTER TABLE users ADD COLUMN tz_offset_minutes INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN push_count INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN push_count_date TEXT`,
+    // Engagement engine — batch duplicate notifications ("X and N others cheered")
+    `ALTER TABLE notifications ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
+    // Lifecycle email — last day we sent a re-engagement digest (yyyy-mm-dd)
+    `ALTER TABLE users ADD COLUMN last_digest_date TEXT`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}
   }
 
-  // Mark the platform owner as admin (by email — works regardless of user ID)
-  try {
-    await run("UPDATE users SET is_admin = 1 WHERE email IN ('rahul@drinkeden.app','rahul@drinkedinn.app')");
-  } catch(e) {}
+  // Admin audit trail and password reset tables
+  const securityTables = [
+    `CREATE TABLE IF NOT EXISTS admin_audit (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       actor_id INTEGER NOT NULL,
+       action TEXT NOT NULL,
+       target_type TEXT,
+       target_id TEXT,
+       detail TEXT,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE TABLE IF NOT EXISTS password_resets (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       token TEXT NOT NULL,
+       expires_at INTEGER NOT NULL,
+       used INTEGER NOT NULL DEFAULT 0
+     )`,
+    // Engagement engine — Web Push subscriptions (one row per device/endpoint)
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       endpoint TEXT NOT NULL UNIQUE,
+       p256dh TEXT NOT NULL,
+       auth TEXT NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+  ];
+  for (const sql of securityTables) {
+    try { await exec(sql); } catch (e) {
+      if (!/already exists/i.test(String(e.message))) console.error('[db] security table error:', e.message);
+    }
+  }
+
+  // Admin is granted only via scripts/promoteAdmin.js — no email-based escalation here
 
   // Seed demo data
   const row = await get('SELECT COUNT(*) as count FROM users');

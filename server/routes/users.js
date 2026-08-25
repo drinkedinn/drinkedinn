@@ -1,12 +1,13 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { notify } = require('../lib/notify');
 
 const router = express.Router();
 
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -26,7 +27,7 @@ router.put('/me', auth, async (req, res) => {
       'UPDATE users SET name = ?, title = ?, bio = ?, avatar = ?, drinks = ?, onboarded = ? WHERE id = ?',
       [name.trim(), title || '', bio || '', avatar || '', drinksJson, onboarded ? 1 : 0, req.user.id]
     );
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -83,7 +84,7 @@ router.post('/:id/connect', auth, async (req, res) => {
       res.json({ connected: false });
     } else {
       await db.run('INSERT OR IGNORE INTO connections (user_id, target_id) VALUES (?, ?)', [uid, tid]);
-      await db.run('INSERT INTO notifications (user_id, actor_id, type, post_id) VALUES (?, ?, ?, NULL)', [tid, uid, 'connect']);
+      await notify({ recipientId: tid, actorId: uid, type: 'connect', actorName: req.user.name || 'Someone' });
       res.json({ connected: true });
     }
   } catch (err) {
@@ -93,7 +94,7 @@ router.post('/:id/connect', auth, async (req, res) => {
 
 router.get('/:id', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.params.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.params.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.params.id]);

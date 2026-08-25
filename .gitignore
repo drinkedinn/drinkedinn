@@ -32,3 +32,18 @@ npm-debug.log*
 # Lock files (keep package-lock for reproducibility)
 # package-lock.json
 .vercel
+.env*.local
+
+# Project context files (may contain credentials — never commit)
+CLAUDE.md
+*-hardening.md
+
+# Secrets
+.env.local
+.env.*.local
+
+# DB dumps
+dump.sql
+*.sqlite
+*.sqlite3
+*.db

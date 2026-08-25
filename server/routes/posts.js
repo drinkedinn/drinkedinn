@@ -1,11 +1,13 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { notify: notifyEngine } = require('../lib/notify');
+const { touchStreak } = require('../lib/streaks');
 
 const router = express.Router();
 
 const POST_QUERY = (extra = '') => `
-  SELECT p.*, u.name, u.title, u.avatar,
+  SELECT p.*, u.name, u.title, u.avatar, u.verified, u.premium, u.badge,
     (SELECT COUNT(*) FROM cheers WHERE post_id = p.id) as cheer_count,
     (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
     (SELECT COUNT(*) FROM repours WHERE post_id = p.id) as repour_count,
@@ -16,9 +18,21 @@ const POST_QUERY = (extra = '') => `
   ${extra}
 `;
 
+// Delegate to the engagement engine: records the in-app notification (with
+// batching) AND fires a throttled Web Push, respecting prefs + quiet hours.
 const notify = async (userId, actorId, type, postId = null) => {
   if (userId === actorId) return;
-  await db.run('INSERT INTO notifications (user_id, actor_id, type, post_id) VALUES (?, ?, ?, ?)', [userId, actorId, type, postId]);
+  let actorName = 'Someone';
+  try {
+    const a = await db.get('SELECT name FROM users WHERE id = ?', [actorId]);
+    if (a?.name) actorName = a.name;
+  } catch {}
+  await notifyEngine({ recipientId: userId, actorId, type, postId, actorName });
+};
+
+// Record community participation toward the engagement streak (never throws).
+const bumpStreak = async (userId, action) => {
+  try { await touchStreak(userId, action); } catch (e) { console.error('[streak]', e.message); }
 };
 
 router.get('/', auth, async (req, res) => {
@@ -78,6 +92,18 @@ router.get('/hashtag/:tag', auth, async (req, res) => {
   }
 });
 
+// Single post by id. Declared after the literal GET routes above so it can't
+// shadow /trending, /explore, /cheered, etc.
+router.get('/:id(\\d+)', auth, async (req, res) => {
+  try {
+    const post = await db.get(POST_QUERY('WHERE p.id = ?'), [req.user.id, req.user.id, req.user.id, req.params.id]);
+    if (!post) return res.status(404).json({ error: 'Post not found' });
+    res.json(post);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch post' });
+  }
+});
+
 router.post('/', auth, async (req, res) => {
   const { content, drink, location, lat, lng, image_url, poll_options } = req.body;
   if (!content?.trim()) return res.status(400).json({ error: 'Content required' });
@@ -92,6 +118,7 @@ router.post('/', auth, async (req, res) => {
         await db.run('INSERT INTO poll_options (post_id, text) VALUES (?, ?)', [lastInsertRowid, opt.trim()]);
       }
     }
+    await bumpStreak(req.user.id, 'post');
     const post = await db.get(POST_QUERY('WHERE p.id = ?'), [req.user.id, req.user.id, req.user.id, lastInsertRowid]);
     res.json(post);
   } catch (err) {
@@ -110,6 +137,7 @@ router.post('/:id/cheer', auth, async (req, res) => {
       await db.run('INSERT INTO cheers (user_id, post_id) VALUES (?, ?)', [uid, id]);
       const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [id]);
       if (post) await notify(post.user_id, uid, 'cheer', parseInt(id));
+      await bumpStreak(uid, 'cheer');
       res.json({ cheered: true });
     }
   } catch (err) {
@@ -151,6 +179,7 @@ router.post('/:id/comments', auth, async (req, res) => {
     const { lastInsertRowid } = await db.run('INSERT INTO comments (user_id, post_id, content) VALUES (?, ?, ?)', [req.user.id, req.params.id, content.trim()]);
     const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [req.params.id]);
     if (post) await notify(post.user_id, req.user.id, 'comment', parseInt(req.params.id));
+    await bumpStreak(req.user.id, 'comment');
     const comment = await db.get('SELECT c.*, u.name, u.avatar FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [lastInsertRowid]);
     res.json(comment);
   } catch (err) {
