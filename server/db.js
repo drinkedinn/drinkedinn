@@ -326,6 +326,9 @@ async function init() {
     `ALTER TABLE users ADD COLUMN age_assurance_level INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE users ADD COLUMN age_assurance_at INTEGER`,
     `ALTER TABLE users ADD COLUMN age_assurance_ref TEXT`,
+    // Users can refuse brand content outright — a personal setting the ad
+    // delivery gate checks before anything commercial.
+    `ALTER TABLE users ADD COLUMN brand_content_opt_out INTEGER NOT NULL DEFAULT 0`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}
@@ -349,6 +352,76 @@ async function init() {
        expires_at INTEGER NOT NULL,
        used INTEGER NOT NULL DEFAULT 0
      )`,
+    // ── Brand advertising ────────────────────────────────────────────────
+    // A brand is a legal entity we have a contract with. `verified` is set by
+    // an admin after checking they are who they claim — never self-serve.
+    `CREATE TABLE IF NOT EXISTS brands (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       name TEXT NOT NULL,
+       slug TEXT UNIQUE NOT NULL,
+       legal_entity TEXT,
+       contact_email TEXT,
+       website TEXT,
+       avatar TEXT DEFAULT '',
+       bio TEXT DEFAULT '',
+       verified INTEGER NOT NULL DEFAULT 0,
+       status TEXT NOT NULL DEFAULT 'pending',
+       created_at INTEGER NOT NULL
+     )`,
+    // Which platform users may act on behalf of a brand.
+    `CREATE TABLE IF NOT EXISTS brand_members (
+       brand_id INTEGER NOT NULL,
+       user_id INTEGER NOT NULL,
+       role TEXT NOT NULL DEFAULT 'manager',
+       created_at INTEGER NOT NULL,
+       PRIMARY KEY (brand_id, user_id)
+     )`,
+    // A campaign carries the commercial terms and the market list.
+    // target_countries is a JSON array of ISO codes; delivery re-checks each
+    // one against the jurisdiction rules at serve time regardless.
+    `CREATE TABLE IF NOT EXISTS ad_campaigns (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       brand_id INTEGER NOT NULL,
+       name TEXT NOT NULL,
+       status TEXT NOT NULL DEFAULT 'draft',
+       target_countries TEXT NOT NULL DEFAULT '[]',
+       min_age_override INTEGER,
+       daily_impression_cap INTEGER,
+       starts_at INTEGER,
+       ends_at INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    // Creative is reviewed by a human before it can ever serve.
+    `CREATE TABLE IF NOT EXISTS ad_creatives (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       campaign_id INTEGER NOT NULL,
+       headline TEXT NOT NULL,
+       body TEXT DEFAULT '',
+       image_url TEXT DEFAULT '',
+       cta_label TEXT DEFAULT 'Learn more',
+       cta_url TEXT,
+       factual_only INTEGER NOT NULL DEFAULT 0,
+       review_status TEXT NOT NULL DEFAULT 'pending',
+       review_note TEXT,
+       reviewed_by INTEGER,
+       reviewed_at INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    // Delivery log — powers frequency capping and the composition reporting
+    // brands require under the industry codes.
+    `CREATE TABLE IF NOT EXISTS ad_events (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       creative_id INTEGER NOT NULL,
+       campaign_id INTEGER NOT NULL,
+       user_id INTEGER NOT NULL,
+       kind TEXT NOT NULL,
+       country_code TEXT,
+       age_assured INTEGER NOT NULL DEFAULT 0,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_adev_user_day ON ad_events (user_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_adev_campaign ON ad_events (campaign_id, kind)`,
+
     // Age assurance attempts. We record the OUTCOME of a check and the
     // provider's opaque reference — never a document, image, or ID number.
     `CREATE TABLE IF NOT EXISTS age_checks (
