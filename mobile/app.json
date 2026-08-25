@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "DrinkedInn",
+    "slug": "drinkedinn",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "drinkedinn",
+    "userInterfaceStyle": "automatic",
+    "backgroundColor": "#FBF8F2",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.drinkedinn.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "DrinkedInn needs access to your photos so you can share pictures of your pours.",
+        "NSCameraUsageDescription": "DrinkedInn uses your camera so you can photograph the drink you're sharing.",
+        "NSFaceIDUsageDescription": "DrinkedInn uses Face ID to unlock the app when app lock is turned on.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.drinkedinn.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "DrinkedInn needs access to your photos so you can share pictures of your pours.",
+          "cameraPermission": "DrinkedInn uses your camera so you can photograph the drink you're sharing."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "DrinkedInn uses Face ID to unlock the app when app lock is turned on."
+        }
+      ],
+      "expo-secure-store"
+    ]
+  }
+}
