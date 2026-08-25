@@ -21,6 +21,18 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Report the browser's timezone offset so push quiet-hours work per-user.
+  // JS getTimezoneOffset() is minutes BEHIND UTC (e.g. IST = -330); the server
+  // expects minutes AHEAD of UTC, so negate it. Fire-and-forget.
+  const reportTimezone = () => {
+    try {
+      const tz = -new Date().getTimezoneOffset();
+      api.put('/notifications/tz', { tz_offset_minutes: tz }).catch(() => {});
+    } catch {}
+  };
+
+  useEffect(() => { if (user) reportTimezone(); }, [user?.id]);
+
   const login = (token, userData) => {
     localStorage.setItem('di_token', token);
     localStorage.setItem('di_user', JSON.stringify(userData));

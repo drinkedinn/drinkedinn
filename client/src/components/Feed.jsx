@@ -198,6 +198,7 @@ export default function Feed({ mode = 'home', hashtag = null, onUserClick, refre
   const { t } = useTheme();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [potd, setPotd] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -207,6 +208,10 @@ export default function Feed({ mode = 'home', hashtag = null, onUserClick, refre
         : (ENDPOINTS[mode] || '/posts');
       const { data } = await api.get(url);
       setPosts(data);
+      // Load Pour of the Day for home feed
+      if (mode === 'home' && !hashtag) {
+        try { const r = await api.get('/featured/potd'); setPotd(r.data); } catch {}
+      }
     } finally {
       setLoading(false);
     }
@@ -262,6 +267,20 @@ export default function Feed({ mode = 'home', hashtag = null, onUserClick, refre
 
   return (
     <div>
+      {/* Pour of the Day */}
+      {potd && mode === 'home' && (
+        <div style={{
+          background: `linear-gradient(135deg, ${t.accent}15, ${t.accent}08)`,
+          border: `1.5px solid ${t.accent}44`,
+          borderRadius: 16, marginBottom: 16, overflow: 'hidden',
+        }}>
+          <div style={{ padding: '10px 20px 0', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 18 }}>🏆</span>
+            <span style={{ fontWeight: 700, fontSize: 13, color: t.accent, letterSpacing: 0.5, textTransform: 'uppercase' }}>Pour of the Day</span>
+          </div>
+          <PostCard post={potd} onUserClick={onUserClick} onDelete={handleDelete} style={{ border: 'none', marginBottom: 0, boxShadow: 'none', background: 'transparent' }} />
+        </div>
+      )}
       {posts.map(post => (
         <PostCard key={post.id} post={post} onUserClick={onUserClick} onDelete={handleDelete} />
       ))}
