@@ -451,6 +451,18 @@ async function init() {
     `CREATE INDEX IF NOT EXISTS idx_blocked_by ON blocked_users (blocker_id)`,
     `CREATE INDEX IF NOT EXISTS idx_blocked_of ON blocked_users (blocked_id)`,
 
+    // Native push tokens (Expo). Separate from push_subscriptions because web
+    // push needs an endpoint + key pair, while Expo is a single opaque token.
+    `CREATE TABLE IF NOT EXISTS device_tokens (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       token TEXT NOT NULL UNIQUE,
+       platform TEXT,
+       created_at INTEGER NOT NULL,
+       last_seen INTEGER
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_devtok_user ON device_tokens (user_id)`,
+
     // Engagement engine — Web Push subscriptions (one row per device/endpoint)
     `CREATE TABLE IF NOT EXISTS push_subscriptions (
        id INTEGER PRIMARY KEY AUTOINCREMENT,

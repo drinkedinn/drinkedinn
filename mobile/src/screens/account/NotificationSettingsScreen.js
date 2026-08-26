@@ -5,6 +5,7 @@ import api from '../../api';
 import { useTheme } from '../../theme/ThemeContext';
 import { Screen, Header, useToast } from '../../components/ui';
 import { SettingsGroup, SettingsRow } from '../../components/SettingsRow';
+import { enablePush, disablePush, pushSupported, getPermissionStatus } from '../../lib/pushNotifications';
 
 const ITEMS = [
   { key: 'cheers', icon: 'beer-outline', label: 'Cheers on your pours' },
@@ -19,6 +20,39 @@ export default function NotificationSettingsScreen({ navigation }) {
   const toast = useToast();
   const [prefs, setPrefs] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [supported, setSupported] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      setSupported(pushSupported());
+      setPushOn((await getPermissionStatus()) === 'granted');
+    })();
+  }, []);
+
+  const togglePush = async (want) => {
+    setPushBusy(true);
+    try {
+      if (!want) {
+        await disablePush();
+        setPushOn(false);
+        toast?.show('Push turned off on this device.', 'success');
+      } else {
+        const r = await enablePush();
+        if (r.ok) { setPushOn(true); toast?.show('Push notifications on.', 'success'); }
+        else if (r.reason === 'denied') {
+          toast?.show('Enable notifications for DrinkedInn in your device Settings.', 'error');
+        } else if (r.reason === 'simulator') {
+          toast?.show('Push only works on a real device.', 'info');
+        } else {
+          toast?.show('Could not turn on push.', 'error');
+        }
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -58,6 +92,23 @@ export default function NotificationSettingsScreen({ navigation }) {
     <Screen>
       <Header title="Notifications" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ paddingVertical: 8, paddingBottom: 60 }}>
+        <SettingsGroup
+          title="This device"
+          footer={supported
+            ? 'Turn this off to stop push on this device only. Your preferences below still apply everywhere else.'
+            : 'Push notifications need a real device — they don’t work in a simulator.'}
+        >
+          <SettingsRow
+            icon="phone-portrait-outline"
+            label="Push notifications"
+            toggle
+            toggleValue={pushOn}
+            onToggle={togglePush}
+            disabled={!supported || pushBusy}
+            last
+          />
+        </SettingsGroup>
+
         <SettingsGroup
           title="Push & in-app"
           footer="We never send push between 10pm and 8am your time, and cap it at a few a day."

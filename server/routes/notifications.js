@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const expoPush = require('../lib/expoPush');
 
 const router = express.Router();
 
@@ -70,6 +71,24 @@ router.post('/push/subscribe', auth, async (req, res) => {
 router.post('/push/unsubscribe', auth, async (req, res) => {
   const { endpoint } = req.body || {};
   if (endpoint) await db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint]);
+  res.json({ ok: true });
+});
+
+// ── Native device registration (iOS / Android via Expo) ─────────────────────
+router.post('/push/device', auth, async (req, res) => {
+  const { token, platform } = req.body || {};
+  if (!token) return res.status(400).json({ error: 'Push token required' });
+  try {
+    await expoPush.registerToken(req.user.id, token, platform);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message || 'Could not register device.' });
+  }
+});
+
+router.delete('/push/device', auth, async (req, res) => {
+  const { token } = req.body || {};
+  if (token) await expoPush.unregisterToken(token);
   res.json({ ok: true });
 });
 

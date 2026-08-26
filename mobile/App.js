@@ -1,7 +1,8 @@
 // App.js — DrinkedInn mobile
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { attachTapHandler } from './src/lib/pushNotifications';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
@@ -11,7 +12,11 @@ import RootNavigator from './src/navigation/RootNavigator';
 
 function Shell() {
   const { t, mode } = useTheme();
+  const navigationRef = useRef(null);
   const base = mode === 'dark' ? DarkTheme : DefaultTheme;
+
+  // Route notification taps to the post or profile they refer to.
+  useEffect(() => attachTapHandler(navigationRef), []);
   const navTheme = {
     ...base,
     colors: {
@@ -26,7 +31,7 @@ function Shell() {
   };
 
   return (
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       <StatusBar style={t.statusBar} />
       <ToastProvider>
         <AuthProvider>

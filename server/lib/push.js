@@ -9,6 +9,7 @@
 
 const db = require('../db');
 const { canPush, localDateStr } = require('./responsible');
+const expoPush = require('./expoPush');
 
 let webpush;
 try { webpush = require('web-push'); } catch {}
@@ -28,15 +29,36 @@ function ensureConfigured() {
 // the user is in quiet hours, over cap, or push isn't configured — the in-app
 // notification still exists either way.
 async function pushToUser(user, payload) {
+  // Quiet hours and the daily cap are checked ONCE here, so web and native
+  // share exactly one set of limits. A user on both must not get double.
   const decision = canPush(user);
   if (!decision.allowed) return { sent: 0, skipped: decision.reason };
 
-  if (!ensureConfigured()) return { sent: 0, skipped: 'not_configured' };
+  let sent = 0;
+
+  // ── Native (iOS / Android via Expo) ──────────────────────────────────────
+  try {
+    const native = await expoPush.sendToUser(user.id, {
+      title: payload.title,
+      body: payload.body,
+      data: { url: payload.url, type: payload.type, postId: payload.postId, actorId: payload.actorId },
+    });
+    sent += native.sent || 0;
+  } catch (e) {
+    console.error('[push] native send failed:', e.message);
+  }
+
+  // ── Web push ─────────────────────────────────────────────────────────────
+  if (!ensureConfigured()) {
+    if (sent > 0) await bumpCount(user);
+    return { sent, skipped: sent ? undefined : 'not_configured' };
+  }
 
   const subs = await db.all('SELECT * FROM push_subscriptions WHERE user_id = ?', [user.id]);
-  if (!subs.length) return { sent: 0, skipped: 'no_subscription' };
-
-  let sent = 0;
+  if (!subs.length) {
+    if (sent > 0) await bumpCount(user);
+    return { sent, skipped: sent ? undefined : 'no_subscription' };
+  }
   for (const s of subs) {
     try {
       await webpush.sendNotification(
@@ -54,16 +76,20 @@ async function pushToUser(user, payload) {
     }
   }
 
-  if (sent > 0) {
-    const today = localDateStr(user.tz_offset_minutes);
-    const newCount = user.push_count_date === today ? user.push_count + 1 : 1;
-    await db.run('UPDATE users SET push_count = ?, push_count_date = ? WHERE id = ?', [
-      newCount,
-      today,
-      user.id,
-    ]);
-  }
+  if (sent > 0) await bumpCount(user);
   return { sent };
+}
+
+// One notification against the daily cap, however many devices it reached.
+// Counting per-device would punish someone for owning a phone and a laptop.
+async function bumpCount(user) {
+  const today = localDateStr(user.tz_offset_minutes);
+  const newCount = user.push_count_date === today ? (user.push_count || 0) + 1 : 1;
+  await db.run('UPDATE users SET push_count = ?, push_count_date = ? WHERE id = ?', [
+    newCount,
+    today,
+    user.id,
+  ]);
 }
 
 module.exports = { pushToUser };

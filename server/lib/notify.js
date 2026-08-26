@@ -102,7 +102,15 @@ async function notify({ recipientId, actorId = null, type, postId = null, actorN
     );
     if (recipient) {
       const copy = pushCopy(type, actorName, count);
-      await pushToUser(recipient, { ...copy, url: '/', type });
+      // Carry the ids so a tap can open the exact post or profile rather than
+      // dumping the user on a generic activity list.
+      await pushToUser(recipient, {
+        ...copy,
+        url: postId ? `/post/${postId}` : '/',
+        type,
+        postId: postId != null ? String(postId) : null,
+        actorId: actorId != null ? String(actorId) : null,
+      });
     }
   } catch (e) {
     console.error('[notify] push step failed (in-app notif still saved):', e.message);
