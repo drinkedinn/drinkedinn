@@ -15,6 +15,7 @@ const NAV = [
   { id: 'users',      label: 'Users',        emoji: '👥' },
   { id: 'posts',      label: 'Posts',        emoji: '🗂️' },
   { id: 'reports',    label: 'Reports',      emoji: '🚩' },
+  { id: 'brands',     label: 'Brand Review', emoji: '🏷️' },
   { id: 'activity',   label: 'Activity',     emoji: '⚡' },
   { id: 'marketing',  label: 'Marketing',    emoji: '📣' },
 ];
@@ -94,6 +95,7 @@ export default function AdminApp() {
   const [activity, setActivity]   = useState([]);
   const [busy, setBusy]           = useState(false);
   const [reports, setReports]     = useState([]);
+  const [brandQueue, setBrandQueue] = useState({ brands: [], creatives: [] });
 
   // Marketing
   const [activeSkill, setActiveSkill]   = useState(null);
@@ -105,12 +107,35 @@ export default function AdminApp() {
   useEffect(() => { if (page === 'overview') fetchStats(); }, [page]);
   useEffect(() => { if (page === 'activity') fetchActivity(); }, [page]);
   useEffect(() => { if (page === 'reports') fetchReports(); }, [page]);
+  useEffect(() => { if (page === 'brands') fetchBrandQueue(); }, [page]);
   useEffect(() => { if (page === 'users') fetchUsers(); }, [page, userPage, userSearch]);
   useEffect(() => { if (page === 'posts') fetchPosts(); }, [page, postPage]);
 
   const fetchStats    = async () => { try { const r = await api.get('/admin/stats'); setStats(r.data); } catch {} };
   const fetchActivity = async () => { try { const r = await api.get('/admin/activity'); setActivity(r.data); } catch {} };
   const fetchReports  = async () => { try { const r = await api.get('/reports'); setReports(r.data); } catch {} };
+  const fetchBrandQueue = async () => {
+    try {
+      const r = await api.get('/brands/admin/queue');
+      setBrandQueue({ brands: r.data.brands || [], creatives: r.data.creatives || [] });
+    } catch { setBrandQueue({ brands: [], creatives: [] }); }
+  };
+  const reviewBrand = async (id, status, verified) => {
+    setBusy(true);
+    try { await api.put(`/brands/admin/brands/${id}`, { status, verified }); await fetchBrandQueue(); }
+    catch (e) { alert(e.response?.data?.error || 'Could not update brand.'); }
+    setBusy(false);
+  };
+  const reviewCreative = async (id, decision) => {
+    const note = decision === 'rejected'
+      ? window.prompt('Why is this creative rejected? The brand will see this.')
+      : null;
+    if (decision === 'rejected' && note === null) return;
+    setBusy(true);
+    try { await api.put(`/brands/admin/creatives/${id}`, { decision, note }); await fetchBrandQueue(); }
+    catch (e) { alert(e.response?.data?.error || 'Could not record decision.'); }
+    setBusy(false);
+  };
   const resolveReport = async (id, status) => { await api.put(`/reports/${id}`, { status }); fetchReports(); };
   const fetchUsers    = async () => { try { const r = await api.get(`/admin/users?page=${userPage}&search=${userSearch}`); setUsers(r.data.users); setUserTotal(r.data.total); } catch {} };
   const fetchPosts    = async () => { try { const r = await api.get(`/admin/posts?page=${postPage}`); setPosts(r.data.posts); setPostTotal(r.data.total); } catch {} };
@@ -511,6 +536,121 @@ export default function AdminApp() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* ── BRAND REVIEW ── */}
+          {page === 'brands' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 26 }}>
+
+              <Card style={{ padding: '14px 18px', display: 'flex', gap: 12, alignItems: 'flex-start', background: C.amber + '11', borderColor: C.amber + '44' }}>
+                <span style={{ fontSize: 18 }}>⚖️</span>
+                <div style={{ fontSize: 12.5, color: C.textMuted, lineHeight: 1.6 }}>
+                  Nothing here serves until you approve it. Check the brand is a real licensed entity,
+                  and that creative doesn't encourage excessive drinking, appeal to under-age audiences,
+                  or link alcohol to social or professional success. Rejections are shown to the advertiser.
+                </div>
+              </Card>
+
+              {/* Brand verification */}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>
+                  Brand applications
+                  {brandQueue.brands.length > 0 && (
+                    <span style={{ marginLeft: 8 }}><Badge label={brandQueue.brands.length} color={C.amber} bg={C.amber + '22'} /></span>
+                  )}
+                </div>
+                {brandQueue.brands.length === 0 ? (
+                  <Card style={{ padding: 24, textAlign: 'center', color: C.textMuted, fontSize: 13 }}>
+                    No brands waiting for verification.
+                  </Card>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {brandQueue.brands.map(b => (
+                      <Card key={b.id} style={{ padding: 18, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700, color: C.text, fontSize: 15, marginBottom: 4 }}>{b.name}</div>
+                          <div style={{ fontSize: 12.5, color: C.textMuted, lineHeight: 1.7 }}>
+                            <div><strong style={{ color: C.text }}>Legal entity:</strong> {b.legal_entity || '—'}</div>
+                            <div><strong style={{ color: C.text }}>Contact:</strong> {b.contact_email || '—'}</div>
+                            {b.website && (
+                              <div><strong style={{ color: C.text }}>Site:</strong>{' '}
+                                <a href={b.website} target="_blank" rel="noopener noreferrer" style={{ color: C.accentHi }}>{b.website}</a>
+                              </div>
+                            )}
+                            <div style={{ color: C.textFaint, marginTop: 4 }}>
+                              Applied {b.created_at ? new Date(b.created_at).toLocaleDateString() : ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                          <button disabled={busy} onClick={() => reviewBrand(b.id, 'active', true)}
+                            style={{ background: C.green + '22', color: C.green, border: `1px solid ${C.green}44`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                            ✓ Verify
+                          </button>
+                          <button disabled={busy} onClick={() => reviewBrand(b.id, 'rejected', false)}
+                            style={{ background: C.red + '22', color: C.red, border: `1px solid ${C.red}44`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                            ✕ Reject
+                          </button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Creative review */}
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text, marginBottom: 10 }}>
+                  Creative awaiting review
+                  {brandQueue.creatives.length > 0 && (
+                    <span style={{ marginLeft: 8 }}><Badge label={brandQueue.creatives.length} color={C.amber} bg={C.amber + '22'} /></span>
+                  )}
+                </div>
+                {brandQueue.creatives.length === 0 ? (
+                  <Card style={{ padding: 24, textAlign: 'center', color: C.textMuted, fontSize: 13 }}>
+                    No creative in the queue.
+                  </Card>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {brandQueue.creatives.map(c => (
+                      <Card key={c.id} style={{ padding: 18 }}>
+                        <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                          {c.image_url && (
+                            <img src={c.image_url} alt="" style={{ width: 110, height: 82, objectFit: 'cover', borderRadius: 10, flexShrink: 0, border: `1px solid ${C.border}` }} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                              <span style={{ fontWeight: 700, color: C.text, fontSize: 13 }}>{c.brand_name}</span>
+                              <span style={{ color: C.textFaint, fontSize: 12 }}>· {c.campaign_name}</span>
+                              {c.factual_only === 1 && <Badge label="Factual only" color={C.accentHi} bg={C.accentHi + '22'} />}
+                            </div>
+                            <div style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px' }}>
+                              <div style={{ fontWeight: 700, color: C.text, fontSize: 14, marginBottom: 4 }}>{c.headline}</div>
+                              {c.body && <div style={{ color: C.textMuted, fontSize: 13, lineHeight: 1.55 }}>{c.body}</div>}
+                              {c.cta_url && (
+                                <div style={{ marginTop: 8, fontSize: 12, color: C.accentHi }}>
+                                  {c.cta_label} → {c.cta_url}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
+                            <button disabled={busy} onClick={() => reviewCreative(c.id, 'approved')}
+                              style={{ background: C.green + '22', color: C.green, border: `1px solid ${C.green}44`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                              ✓ Approve
+                            </button>
+                            <button disabled={busy} onClick={() => reviewCreative(c.id, 'rejected')}
+                              style={{ background: C.red + '22', color: C.red, border: `1px solid ${C.red}44`, borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
+                              ✕ Reject
+                            </button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
