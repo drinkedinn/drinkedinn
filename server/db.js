@@ -451,6 +451,34 @@ async function init() {
     `CREATE INDEX IF NOT EXISTS idx_blocked_by ON blocked_users (blocker_id)`,
     `CREATE INDEX IF NOT EXISTS idx_blocked_of ON blocked_users (blocked_id)`,
 
+    // Error reports from the server and the apps. Grouped by fingerprint so a
+    // hundred occurrences of one bug are one row with a count, not a hundred
+    // rows nobody reads.
+    `CREATE TABLE IF NOT EXISTS error_reports (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       fingerprint TEXT NOT NULL UNIQUE,
+       source TEXT NOT NULL,
+       message TEXT NOT NULL,
+       stack TEXT,
+       route TEXT,
+       platform TEXT,
+       app_version TEXT,
+       count INTEGER NOT NULL DEFAULT 1,
+       users_affected INTEGER NOT NULL DEFAULT 0,
+       status TEXT NOT NULL DEFAULT 'open',
+       first_seen INTEGER NOT NULL,
+       last_seen INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_err_status ON error_reports (status, last_seen)`,
+    // Which users hit which error, so users_affected is a real count rather
+    // than a guess. Kept separate so the group row stays small.
+    `CREATE TABLE IF NOT EXISTS error_occurrences (
+       fingerprint TEXT NOT NULL,
+       user_id INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_errocc ON error_occurrences (fingerprint, user_id)`,
+
     // Product analytics. First-party by design: no third-party SDK, no data
     // leaving our infrastructure, nothing to add to the privacy policy beyond
     // "we measure how the product is used".

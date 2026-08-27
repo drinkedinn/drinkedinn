@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { attachTapHandler } from './src/lib/pushNotifications';
 import { initAnalytics } from './src/lib/track';
+import { installGlobalHandler } from './src/lib/errorReporting';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
@@ -21,6 +23,9 @@ function Shell() {
 
   // Batched, first-party product analytics.
   useEffect(() => initAnalytics(), []);
+
+  // Catch errors thrown outside React's render cycle.
+  useEffect(() => installGlobalHandler(), []);
   const navTheme = {
     ...base,
     colors: {
@@ -48,12 +53,14 @@ function Shell() {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <ErrorBoundary name="app">
+      <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
           <Shell />
         </ThemeProvider>
       </SafeAreaProvider>
-    </GestureHandlerRootView>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

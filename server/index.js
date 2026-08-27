@@ -71,6 +71,8 @@ try {
 // On Vercel: kick off DB init immediately at module load (non-blocking).
 // All API requests wait for this promise before being processed.
 const db = require('./db');
+const errorReporter = require('./lib/errorReporter');
+errorReporter.installProcessHandlers();
 let _dbReady = null;
 if (process.env.VERCEL) {
   _dbReady = db.init().catch(e => console.error('DB init error:', e.message));
@@ -137,6 +139,7 @@ app.use('/api/blocks',      require('./routes/blocks'));
 app.use('/api/age',         require('./routes/age'));
 app.use('/api/ads',         require('./routes/ads'));
 app.use('/api/analytics',   require('./routes/analytics'));
+app.use('/api/errors',      require('./routes/errors'));
 app.use('/api/brands',      require('./routes/brands'));
 
 // ===== AI Agent System =====
@@ -179,6 +182,9 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
   app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
 }
+
+// Error handler LAST — it only sees what the routes above threw.
+app.use(errorReporter.expressHandler());
 
 // Export app for Vercel serverless
 module.exports = app;
