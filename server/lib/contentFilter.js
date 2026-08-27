@@ -28,7 +28,10 @@ const HARD_BLOCK = [
 
 // Alcohol-specific harm patterns — the category that gets this app rejected.
 const ALCOHOL_HARM = [
-  { re: /\b(drink|drank|drinking)\s+(and|then|while)\s+(driv\w+|ride|riding)\b/i, why: 'drink driving' },
+  // "drove" does not start with "driv", so an alternation on driv\w+ alone
+  // missed the most natural past tense: "drank then drove home".
+  { re: /\b(drink|drank|drunk|drinking)\b.{0,12}\b(driv\w+|drove|ride|riding|rode)\b/i, why: 'drink driving' },
+  { re: /\b(driv\w+|drove)\b.{0,12}\b(drunk|hammered|wasted|tipsy)\b/i, why: 'drink driving' },
   { re: /\bdrunk\s?driv\w*\b/i, why: 'drink driving' },
   { re: /\b(shots?|shot)\s?gunn?\w*\b/i, why: 'rapid-consumption challenge' },
   { re: /\b(chug|chugg\w+|sculling|skulling|funnel(?:ing|ling)?)\b/i, why: 'rapid-consumption challenge' },
@@ -36,8 +39,10 @@ const ALCOHOL_HARM = [
   { re: /\b(black(?:ed)?\s?out|blackout)\s+(drunk|wasted)\b/i, why: 'glorifying blackout drinking' },
   { re: /\b(power\s?hour|century\s?club|edward\s?fortyhands|neknomination)\b/i, why: 'drinking game' },
   { re: /\b\d{2,}\s+(shots?|pints?|beers?|drinks?)\s+in\b/i, why: 'volume challenge' },
-  { re: /\b(under\s?age|underage|minor|kids?|children)\b.{0,24}\b(drink|drunk|beer|vodka|booze)\b/i, why: 'minors and alcohol' },
-  { re: /\b(drink|beer|vodka|booze)\b.{0,24}\b(under\s?age|underage|my kid|my son|my daughter)\b/i, why: 'minors and alcohol' },
+  // No trailing \b on the drink terms — it prevented matching inflections, so
+  // "underage drinking" slipped through while "underage drink" was caught.
+  { re: /\b(under\s?age|underage|minor|kids?|children)\b.{0,24}\b(drink|drunk|beer|vodka|booze|wine|spirits)/i, why: 'minors and alcohol' },
+  { re: /\b(drink|beer|vodka|booze|wine)\w*\b.{0,24}\b(under\s?age|underage|my kid|my son|my daughter)\b/i, why: 'minors and alcohol' },
 ];
 
 // Softer signals — allowed, but surfaced to moderators.
