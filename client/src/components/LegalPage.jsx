@@ -108,6 +108,20 @@ export function PrivacyPolicy() {
         <li style={S.li}><strong>Push tokens</strong> — only if you turn on push notifications.</li>
       </ul>
 
+      <h2 style={S.h2}>How we measure the product</h2>
+      <p style={S.p}>
+        We record which features are used so we can tell what's working — events like
+        "opened the app", "shared a pour", "completed sign-up", along with your country and
+        platform. This is <strong>first-party only</strong>: we run it ourselves, there is no
+        third-party analytics SDK in DrinkedInn, and none of it is shared with anyone.
+      </p>
+      <p style={S.p}>
+        These records deliberately exclude the content of what you write. Post text, comments,
+        messages, search terms and your IP address are never stored in our analytics. Each event
+        may only carry a short, fixed set of values — for example whether a post had a photo,
+        not what the post said.
+      </p>
+
       <h2 style={S.h2}>What we don't collect</h2>
       <p style={S.p}>
         We do not collect precise location data, contacts, health data, or advertising identifiers.
