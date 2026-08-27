@@ -3,6 +3,7 @@ import React, { useRef, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { attachTapHandler } from './src/lib/pushNotifications';
+import { initAnalytics } from './src/lib/track';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
@@ -17,6 +18,9 @@ function Shell() {
 
   // Route notification taps to the post or profile they refer to.
   useEffect(() => attachTapHandler(navigationRef), []);
+
+  // Batched, first-party product analytics.
+  useEffect(() => initAnalytics(), []);
   const navTheme = {
     ...base,
     colors: {

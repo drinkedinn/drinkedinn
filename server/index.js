@@ -136,6 +136,7 @@ app.use('/api/jobs',        require('./routes/jobs'));
 app.use('/api/blocks',      require('./routes/blocks'));
 app.use('/api/age',         require('./routes/age'));
 app.use('/api/ads',         require('./routes/ads'));
+app.use('/api/analytics',   require('./routes/analytics'));
 app.use('/api/brands',      require('./routes/brands'));
 
 // ===== AI Agent System =====

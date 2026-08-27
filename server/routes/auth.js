@@ -11,6 +11,7 @@ const config = require('../config');
 const { requireAuth } = require('../middleware/auth');
 const { sendVerificationEmail } = require('../lib/mailer');
 const jurisdictions = require('../lib/jurisdictions');
+const analytics = require('../lib/analytics');
 
 let z;
 try { ({ z } = require('zod')); } catch {}
@@ -133,6 +134,7 @@ router.post('/register', async (req, res) => {
       'SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, token_version FROM users WHERE id = ?',
       [lastInsertRowid]
     );
+    analytics.track('signup_completed', { userId: user.id, country, props: { has_dob: !!date_of_birth } });
     const token = signToken(user);
     res.status(201).json({ token, user, verified: false, message: 'Account created. Check your email to verify.' });
   } catch (err) {

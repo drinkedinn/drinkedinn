@@ -451,6 +451,27 @@ async function init() {
     `CREATE INDEX IF NOT EXISTS idx_blocked_by ON blocked_users (blocker_id)`,
     `CREATE INDEX IF NOT EXISTS idx_blocked_of ON blocked_users (blocked_id)`,
 
+    // Product analytics. First-party by design: no third-party SDK, no data
+    // leaving our infrastructure, nothing to add to the privacy policy beyond
+    // "we measure how the product is used".
+    //
+    // Deliberately NOT stored: IP addresses, post content, message text, or any
+    // free-text a user typed. Events are a name plus small structured props.
+    `CREATE TABLE IF NOT EXISTS analytics_events (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER,
+       anon_id TEXT,
+       name TEXT NOT NULL,
+       props TEXT,
+       platform TEXT,
+       country_code TEXT,
+       session_id TEXT,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_name_time ON analytics_events (name, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_user_time ON analytics_events (user_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_day ON analytics_events (created_at)`,
+
     // Native push tokens (Expo). Separate from push_subscriptions because web
     // push needs an endpoint + key pair, while Expo is a single opaque token.
     `CREATE TABLE IF NOT EXISTS device_tokens (

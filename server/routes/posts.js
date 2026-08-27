@@ -5,6 +5,7 @@ const { notify: notifyEngine } = require('../lib/notify');
 const { touchStreak } = require('../lib/streaks');
 const { screenContent } = require('../lib/contentFilter');
 const { blockedIds, filterBlocked } = require('../lib/blocking');
+const analytics = require('../lib/analytics');
 
 const router = express.Router();
 
@@ -126,6 +127,7 @@ router.post('/', auth, async (req, res) => {
       }
     }
     await bumpStreak(req.user.id, 'post');
+    analytics.track('post_created', { userId: req.user.id, props: { has_image: !!image_url, has_poll: hasPoll, drink: drink || '' } });
     const post = await db.get(POST_QUERY('WHERE p.id = ?'), [req.user.id, req.user.id, req.user.id, lastInsertRowid]);
     res.json(post);
   } catch (err) {
@@ -145,6 +147,7 @@ router.post('/:id/cheer', auth, async (req, res) => {
       const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [id]);
       if (post) await notify(post.user_id, uid, 'cheer', parseInt(id));
       await bumpStreak(uid, 'cheer');
+      analytics.track('post_cheered', { userId: uid });
       res.json({ cheered: true });
     }
   } catch (err) {
@@ -191,6 +194,7 @@ router.post('/:id/comments', auth, async (req, res) => {
     const post = await db.get('SELECT user_id FROM posts WHERE id = ?', [req.params.id]);
     if (post) await notify(post.user_id, req.user.id, 'comment', parseInt(req.params.id));
     await bumpStreak(req.user.id, 'comment');
+    analytics.track('post_commented', { userId: req.user.id });
     const comment = await db.get('SELECT c.*, u.name, u.avatar FROM comments c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [lastInsertRowid]);
     res.json(comment);
   } catch (err) {
