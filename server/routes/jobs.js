@@ -1,8 +1,9 @@
 // server/routes/jobs.js
-// Scheduled-job endpoints. The lifecycle digest is triggered daily by Vercel Cron
-// (see vercel.json "crons"). Cron requests are authenticated by CRON_SECRET:
-// Vercel automatically sends `Authorization: Bearer $CRON_SECRET` when that env
-// var is set. We also accept ?key= for manual/admin runs.
+// Scheduled-job endpoints. On Cloudflare the digest runs from a cron trigger
+// (see wrangler.jsonc "triggers.crons"), which calls runLifecycleEmails
+// directly in worker.js. This HTTP route remains so the job can also be
+// triggered manually, and is guarded by CRON_SECRET — as a Bearer token or
+// ?key= — so nobody else can fire it.
 
 const express = require('express');
 const jwt = require('jsonwebtoken');

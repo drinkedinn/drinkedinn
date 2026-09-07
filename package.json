@@ -7,7 +7,11 @@
     "client": "cd client && npx vite --port 3000",
     "install:all": "cd server && npm install && cd ../client && npm install",
     "build": "cd client && npm install && npx vite build",
-    "start": "NODE_ENV=production node server/index.js"
+    "start": "NODE_ENV=production node server/index.js",
+    "deploy": "npm run build && wrangler deploy",
+    "cf:dev": "wrangler dev --local",
+    "cf:tail": "wrangler tail",
+    "test": "npm test --prefix server"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
