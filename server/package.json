@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
-    "test": "node --test --test-concurrency=1 test/",
+    "test": "node --test test/",
     "test:watch": "node --test --watch --test-concurrency=1 test/"
   },
   "dependencies": {

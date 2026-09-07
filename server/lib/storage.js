@@ -77,7 +77,10 @@ async function put(buffer, { prefix = 'uploads', ext = '.jpg', contentType = 'ap
         cacheControl: 'public, max-age=31536000, immutable',
       },
     });
-    const base = PUBLIC_BASE || `${config.publicBaseUrl}/uploads`;
+    // `key` already starts with its prefix ("uploads/…"), so the fallback base
+    // must NOT add another one — that produced /uploads/uploads/… , a path
+    // nothing serves.
+    const base = PUBLIC_BASE || config.publicBaseUrl;
     return { url: `${base}/${key}`, key, backend: 'r2-binding' };
   }
 
@@ -91,7 +94,7 @@ async function put(buffer, { prefix = 'uploads', ext = '.jpg', contentType = 'ap
       // Long cache: keys are random and content never changes under a key.
       CacheControl: 'public, max-age=31536000, immutable',
     }));
-    const base = PUBLIC_BASE || `${config.publicBaseUrl}/uploads`;
+    const base = PUBLIC_BASE || config.publicBaseUrl;
     return { url: `${base}/${key}`, key, backend: 'r2' };
   }
 

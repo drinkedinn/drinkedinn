@@ -2,18 +2,38 @@
 // Shared setup for tests that need a database.
 //
 // Env must be set BEFORE requiring db or config — both read process.env at
-// module load. One fixed database file is reused across test files so the
-// expensive demo seed in init() only runs once per suite.
+// module load.
+//
+// The database file is per-PROCESS. `node --test` runs each test file in its
+// own process, so a single shared path meant several processes writing one
+// SQLite file: "SQLITE_BUSY: database is locked", roughly a third of the suite
+// red. That was previously contained by pinning --test-concurrency=1, which
+// works for `npm test` but leaves a plain `node --test test/` failing for
+// reasons that look like real breakage. Isolating the file fixes the cause, so
+// the suite is correct however it is invoked — and can run in parallel.
+//
+// The demo seed is skipped: it is slow, hashes a password per account, and no
+// test depends on it.
 
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
-const DB_PATH = path.join('/tmp', 'drinkedinn-test.db');
+const DB_PATH = path.join(os.tmpdir(), `drinkedinn-test-${process.pid}.db`);
 
 process.env.TURSO_DB_URL = `file:${DB_PATH}`;
 process.env.JWT_SECRET = 'test-secret-that-is-definitely-long-enough-32';
 process.env.NODE_ENV = 'test';
+process.env.SKIP_DEMO_SEED = '1';
 delete process.env.TURSO_DB_AUTH_TOKEN;
+
+// Leave no litter in the temp directory, however the process ends.
+function cleanup() {
+  for (const suffix of ['', '-shm', '-wal']) {
+    try { fs.unlinkSync(DB_PATH + suffix); } catch {}
+  }
+}
+process.on('exit', cleanup);
 
 const db = require('../db');
 

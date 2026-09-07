@@ -29,11 +29,17 @@
     "directory": "./client/dist",
     "binding": "ASSETS",
 
-    // Without this, an unknown path 307-redirects to "/" and the requested
-    // route is lost — a shared link to /profile/42 would land on the home page.
-    // SPA handling serves index.html AT the requested path so the router can
-    // read it.
-    "not_found_handling": "single-page-application"
+    // "none" makes the binding return a real 404 for an unknown path, and the
+    // Worker decides what that means (see serveUpload / looksLikeFile in
+    // server/worker.js): a client route gets index.html at its own URL, while a
+    // missing .js or .css gets an honest 404.
+    //
+    // NOT "single-page-application": that answers *every* unknown path with
+    // index.html and a 200, including missing assets — so a bad script URL
+    // returns HTML and the browser reports "Unexpected token '<'", which points
+    // nowhere near the real problem. It also made the Worker's own fallback
+    // logic unreachable, since the binding never returned a 404 to react to.
+    "not_found_handling": "none"
   },
 
   "observability": {

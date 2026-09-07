@@ -77,9 +77,49 @@ function createApp({ isWorker = IS_WORKER } = {}) {
   // req.rawBody, which webhook signature checks depend on.
   app.use(jsonBody({ limit: 1024 * 1024 }));
 
-  app.get('/api/health', (req, res) =>
-    res.json({ status: 'ok', runtime: isWorker ? 'workers' : 'node', ts: Date.now() })
-  );
+  // Health must reflect whether the app can actually SERVE, not merely whether
+  // the process booted. Reporting "ok" while the database is unreachable is
+  // worse than no health check at all — monitoring goes green through an
+  // outage, which is exactly when you need it to go red.
+  //
+  // `?deep=0` skips the database probe for cheap liveness pings.
+  app.get('/api/health', async (req, res) => {
+    const body = { status: 'ok', runtime: isWorker ? 'workers' : 'node', ts: Date.now() };
+
+    if (req.query.deep === '0') return res.json(body);
+
+    try {
+      const db = require('./db');
+      // Cheapest possible round trip that still proves the connection works.
+      // Timed out rather than left hanging: a wedged database should surface as
+      // a fast, explicit failure, not a request that eventually times out at
+      // the edge with no diagnosis.
+      let timer;
+      try {
+        await Promise.race([
+          db.get('SELECT 1 AS ok'),
+          new Promise((_, rej) => {
+            timer = setTimeout(() => rej(new Error('database probe timed out after 3000ms')), 3000);
+          }),
+        ]);
+      } finally {
+        // Cleared even on the happy path — a timer left pending outlives the
+        // response and can fault the isolate on a later request.
+        clearTimeout(timer);
+      }
+      body.db = 'ok';
+    } catch (e) {
+      body.status = 'degraded';
+      body.db = 'error';
+      // Health is unauthenticated, so the message goes through the same
+      // redaction the error reporter uses. A libsql failure can echo the
+      // connection URL back, and those can carry an embedded authToken.
+      body.error = require('./lib/errorReporter').scrub(e.message).slice(0, 300);
+      return res.status(503).json(body);
+    }
+
+    return res.json(body);
+  });
 
   // ── API routes ────────────────────────────────────────────────────────────
   app.use('/api/auth', require('./routes/auth'));
