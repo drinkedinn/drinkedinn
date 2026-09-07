@@ -116,8 +116,11 @@ function createApp({ isWorker = IS_WORKER } = {}) {
   try { app.use('/api/brands', require('./routes/brands')); } catch {}
   try { app.use('/api/ads', require('./routes/ads')); } catch {}
 
-  // AI agent system. It pulls in a lot and is admin-only, so a failure to load
-  // must not take the whole API down with it.
+  // AI agent system. Constructing the orchestrator performs I/O, which Workers
+  // forbids at global scope, and it is an internal admin surface — so it is
+  // simply not available there rather than failing noisily on every cold start.
+  if (isWorker) return app;
+
   try {
     const Orchestrator = require('./agents/orchestrator');
     const db = require('./db');

@@ -20,7 +20,7 @@ router.delete('/me', auth, async (req, res) => {
     const user = await db.get('SELECT id, password, is_admin FROM users WHERE id = ?', [req.user.id]);
     if (!user) return res.status(404).json({ error: 'Account not found.' });
 
-    const valid = await bcrypt.compare(password, user.password);
+    const valid = await require('../lib/password').verify(password, user.password);
     if (!valid) return res.status(401).json({ error: 'That password is incorrect.' });
 
     // Guard against the platform locking itself out of its own admin panel.

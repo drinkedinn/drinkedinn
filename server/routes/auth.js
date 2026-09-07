@@ -4,6 +4,7 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const password_ = require('../lib/password');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const db = require('../db');
@@ -96,7 +97,7 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ error: 'Could not create account with those details.' });
     }
 
-    const hash = await bcrypt.hash(password, 12);
+    const hash = await password_.hash(password);
     const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}&backgroundColor=b45309,d97706`;
     const referralCode = crypto.randomBytes(4).toString('hex').toUpperCase();
     const verifyToken = crypto.randomBytes(32).toString('hex');
@@ -179,8 +180,9 @@ router.post('/login', async (req, res) => {
     );
 
     const fail = async () => {
-      // Always run bcrypt compare to equalize timing (prevent user enumeration)
-      if (!user) await bcrypt.compare(password, '$2a$12$invalidinvalidinvalidinvalidinvalidinv');
+      // Do equivalent work for a missing account so response time doesn't
+      // reveal whether the email exists.
+      if (!user) await password_.verify(password, 'pbkdf2$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
       return res.status(401).json({ error: 'Invalid email or password' });
     };
 
@@ -190,7 +192,7 @@ router.post('/login', async (req, res) => {
       return res.status(429).json({ error: 'Account temporarily locked. Try again later.' });
     }
 
-    const ok = await bcrypt.compare(password, user.password);
+    const ok = await password_.verify(password, user.password);
     if (!ok) {
       const failed = (user.failed_logins ?? 0) + 1;
       const lock = failed >= LOCK_THRESHOLD ? Date.now() + LOCK_MINUTES * 60_000 : null;
@@ -202,6 +204,18 @@ router.post('/login', async (req, res) => {
     }
 
     await db.run('UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?', [user.id]);
+
+    // Transparently upgrade legacy bcrypt hashes now that we have the plaintext.
+    // This is the only moment it is possible, and it happens at most once per
+    // account. Failure here must never block a valid login.
+    if (password_.needsRehash(user.password)) {
+      try {
+        const upgraded = await password_.hash(password);
+        await db.run('UPDATE users SET password = ? WHERE id = ?', [upgraded, user.id]);
+      } catch (e) {
+        console.warn('[login] password upgrade failed:', e.message);
+      }
+    }
 
     const { password: _, ...safeUser } = user;
     return res.json({
@@ -224,9 +238,9 @@ router.post('/change-password', requireAuth, async (req, res) => {
 
   try {
     const user = await db.get('SELECT password FROM users WHERE id = ?', [req.user.id]);
-    const valid = await bcrypt.compare(currentPassword, user.password);
+    const valid = await password_.verify(currentPassword, user.password);
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
-    const hash = await bcrypt.hash(newPassword, 12);
+    const hash = await password_.hash(newPassword);
     // Also bump token_version to revoke all other sessions
     await db.run(
       'UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
