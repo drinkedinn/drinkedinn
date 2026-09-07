@@ -534,7 +534,13 @@ async function init() {
   const row = await get('SELECT COUNT(*) as count FROM users');
   const count = row?.count || 0;
 
-  if (count === 0) {
+  // Demo seeding is expensive (bcrypt for every account) and has no place in a
+  // real deployment. Skipped on Workers, where it would also risk the CPU limit
+  // on whichever unlucky request triggers first-run initialisation.
+  const skipSeed = process.env.SKIP_DEMO_SEED === '1'
+    || (typeof globalThis.WebSocketPair !== 'undefined');
+
+  if (count === 0 && !skipSeed) {
     const drinkSets = [
       '{"🥃":85,"🍷":60,"🍺":90,"🍹":70}',
       '{"🍹":95,"🥂":80,"🍸":70,"🥃":40}',

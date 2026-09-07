@@ -1,0 +1,68 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "drinkedinn",
+  "main": "server/worker.js",
+
+  // nodejs_compat is what makes Express run here at all — it provides
+  // node:http, node:net and node:tls. With any date after 2024-09-23 this flag
+  // already implies the v2 behaviour, so there is no need to list both.
+  // Raise this date only alongside a wrangler upgrade: the local runtime binary
+  // refuses to start if the date is newer than it supports.
+  "compatibility_date": "2026-05-03",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // iconv-lite (via body-parser -> raw-body) does not survive the Workers
+  // bundler: it fails with "require_streams(...) is not a function" at startup.
+  // The API is UTF-8 JSON only, so a small shim covers everything actually used.
+  "alias": {
+    "iconv-lite": "./server/lib/iconv-shim.js",
+
+    // The default @libsql/client entry loads a NATIVE binary for local SQLite
+    // files. Workers cannot load native modules, and does not need to — Turso
+    // is reached over HTTP. The /web build is exactly that path.
+    "@libsql/client": "./server/node_modules/@libsql/client/lib-esm/web.js"
+  },
+
+  // The built SPA. The worker serves anything outside /api from here and falls
+  // back to index.html so client-side routes survive a hard refresh.
+  "assets": {
+    "directory": "./client/dist",
+    "binding": "ASSETS",
+
+    // Without this, an unknown path 307-redirects to "/" and the requested
+    // route is lost — a shared link to /profile/42 would land on the home page.
+    // SPA handling serves index.html AT the requested path so the router can
+    // read it.
+    "not_found_handling": "single-page-application"
+  },
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Uploads. Native binding — no credentials, no signing, no egress fees.
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "drinkedinn-uploads"
+    }
+  ],
+
+  "triggers": {
+    "crons": [
+      // Daily re-engagement digest, 16:00 UTC — matches the previous schedule.
+      "0 16 * * *",
+      // Autopost for demo accounts, every four hours.
+      "0 */4 * * *"
+    ]
+  },
+
+  "vars": {
+    "NODE_ENV": "production",
+    "PUBLIC_BASE_URL": "https://www.drinkedinn.com",
+    "MIN_AGE": "18"
+  }
+
+  // Secrets are NOT listed here — they are set with `wrangler secret put` and
+  // never committed. See CLOUDFLARE.md for the full list.
+}

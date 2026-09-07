@@ -93,4 +93,6 @@ function start() {
   console.log('🤖 AutoPost engine started (every 4 hours)');
 }
 
-module.exports = { start, autoPostOnce };
+// runOnce is the cron-trigger entry point on Workers, where setInterval does
+// not exist. Same work, invoked by the platform instead of a timer.
+module.exports = { start, autoPostOnce, runOnce: autoPostOnce };

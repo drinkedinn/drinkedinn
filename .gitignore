@@ -47,3 +47,7 @@ dump.sql
 *.sqlite
 *.sqlite3
 *.db
+
+# Cloudflare local dev secrets
+.dev.vars
+.wrangler/
