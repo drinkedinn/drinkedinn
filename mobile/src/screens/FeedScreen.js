@@ -224,7 +224,7 @@ export default function FeedScreen({ navigation }) {
               <EmptyState
                 icon="wine-outline"
                 title="The bar's just opened"
-                body="Be the first to share what's in your glass tonight."
+                body="Be the first to share a moment worth remembering."
                 actionLabel="Share a pour"
                 onAction={() => navigation.navigate('Compose')}
               />

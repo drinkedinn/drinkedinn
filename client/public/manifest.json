@@ -1,7 +1,7 @@
 {
   "name": "DrinkedInn",
   "short_name": "DrinkedInn",
-  "description": "The social network for drink lovers",
+  "description": "Your people. Your places. Your stories.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0b14",

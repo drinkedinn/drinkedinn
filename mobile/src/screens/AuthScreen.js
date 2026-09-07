@@ -152,7 +152,7 @@ export default function AuthScreen() {
               </View>
               <Text style={[type.body, { color: t.textSecondary, textAlign: 'center', marginTop: 10, lineHeight: 22 }]}>
                 {isRegister
-                  ? 'Every good story starts at the inn.\nPull up a chair.'
+                  ? 'Stories start here.\nYour people. Your places. Your stories.'
                   : 'Welcome back. The inn’s still open.'}
               </Text>
             </View>

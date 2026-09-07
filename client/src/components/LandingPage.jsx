@@ -3,18 +3,18 @@ import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
 const FEATURES = [
-  { icon: '🥃', title: 'Share Your Pours', desc: 'Post what you\'re drinking with tasting notes, ratings, and photos' },
-  { icon: '🫂', title: 'Find Your Tribe', desc: 'Connect with whisky lovers, craft beer geeks, wine professionals' },
-  { icon: '🍶', title: 'Drink Groups', desc: 'Join communities around your favourite drinks — from Scotch to Sake' },
-  { icon: '⚡', title: 'Monthly Challenges', desc: 'Try 5 new craft beers, explore world whiskies, discover natural wine' },
-  { icon: '🍸', title: 'My Bar', desc: 'Track your ratings, build your collection, earn badges' },
-  { icon: '💬', title: 'Real Conversations', desc: 'DM drink pros, bartenders, sommeliers — no small talk required' },
+  { icon: '📸', title: 'Share the Moment', desc: 'The table, the view, the people — post what made the night worth remembering' },
+  { icon: '🫂', title: 'Find Your People', desc: 'Follow the friends, hosts and regulars whose taste you actually trust' },
+  { icon: '📍', title: 'Remember the Places', desc: 'Every moment keeps its location, so you can find your way back to it' },
+  { icon: '🗺️', title: 'Discover Something New', desc: 'Monthly discoveries that send you somewhere — a new place, a new find' },
+  { icon: '⭐', title: 'Build Your Taste', desc: 'Keep notes and ratings, and watch your own taste take shape over time' },
+  { icon: '💬', title: 'Real Conversations', desc: 'Groups, events and messages with people who care about the same things' },
 ];
 
 const TESTIMONIALS = [
-  { name: 'Arjun S.', title: 'VP Marketing', text: 'Finally a social network where "networking" means sharing a good bottle.', avatar: '🥃' },
-  { name: 'Priya K.', title: 'Tequila Correspondent', text: 'DrinkedInn taught me that mezcal and tequila are not the same thing. Career-changing.', avatar: '🍹' },
-  { name: 'Dev P.', title: 'Craft Beer Analyst', text: 'I\'ve rated 340 beers. My ML model predicts IPA quality from label design. 73% accuracy.', avatar: '🍺' },
+  { name: 'Arjun S.', title: 'Lagos', text: 'I found my favourite rooftop through someone else\'s Friday night. Now it\'s where we all end up.', avatar: '🌆' },
+  { name: 'Priya K.', title: 'Lisbon', text: 'Two years of nights out, all in one place. It reads like a scrapbook I didn\'t know I was keeping.', avatar: '📸' },
+  { name: 'Dev P.', title: 'Tokyo', text: 'Every trip I take, I come home with a list of places from people who actually live there.', avatar: '🗺️' },
 ];
 
 export default function LandingPage() {
@@ -34,7 +34,7 @@ export default function LandingPage() {
             Log In
           </button>
           <button onClick={() => navigate('/login')} style={{ background: 'linear-gradient(135deg, #0a66c2, #1d8fe8)', border: 'none', borderRadius: 10, padding: '10px 22px', color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 16px rgba(10,102,194,0.4)' }}>
-            Join the Bar 🍺
+            Pull Up a Chair
           </button>
         </div>
       </nav>
@@ -42,22 +42,22 @@ export default function LandingPage() {
       {/* ── Hero ── */}
       <section style={{ textAlign: 'center', padding: '80px 24px 60px', maxWidth: 800, margin: '0 auto' }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: '#0a66c2', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 16 }}>
-          THE SOCIAL NETWORK FOR DRINK LOVERS
+          YOUR PEOPLE. YOUR PLACES. YOUR STORIES.
         </div>
         <h1 style={{ fontSize: 'clamp(36px, 6vw, 64px)', fontWeight: 900, lineHeight: 1.1, margin: '0 0 24px', letterSpacing: -2 }}>
-          Where Professionals<br />
-          <span style={{ background: 'linear-gradient(135deg, #f5a623, #ffcc5c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Actually Unwind</span>
+          Stories<br />
+          <span style={{ background: 'linear-gradient(135deg, #f5a623, #ffcc5c)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>start here</span>
         </h1>
         <p style={{ fontSize: 18, color: '#8b8fa8', lineHeight: 1.7, maxWidth: 560, margin: '0 auto 40px' }}>
-          Share what you're drinking. Connect with whisky nerds, craft beer geeks, and wine
-          professionals. No synergy. No circle-backs. Just good drinks and real conversations.
+          Share the moments worth remembering — the table, the view, the people. Keep
+          the places you loved, and find the people who make a night worth telling.
         </p>
         <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={() => navigate('/login')} style={{ background: 'linear-gradient(135deg, #0a66c2, #1d8fe8)', border: 'none', borderRadius: 12, padding: '16px 36px', color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 24px rgba(10,102,194,0.45)', transition: 'transform 0.15s' }}
             onMouseEnter={e => e.target.style.transform = 'scale(1.03)'}
             onMouseLeave={e => e.target.style.transform = 'scale(1)'}
           >
-            Join Free — It Takes 30 Seconds 🍺
+            Pull Up a Chair — 30 Seconds
           </button>
           <button onClick={() => navigate('/login')} style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid #2a2d3e', borderRadius: 12, padding: '16px 30px', color: '#f0f2f8', fontSize: 16, fontWeight: 600, cursor: 'pointer' }}>
             Demo Account →
@@ -67,7 +67,7 @@ export default function LandingPage() {
         {/* Social proof */}
         <div style={{ marginTop: 40, display: 'flex', justifyContent: 'center', gap: 32, color: '#555870', fontSize: 14 }}>
           <span>👥 <strong style={{ color: '#f0f2f8' }}>50+</strong> members</span>
-          <span>📝 <strong style={{ color: '#f0f2f8' }}>100+</strong> pour stories</span>
+          <span>📝 <strong style={{ color: '#f0f2f8' }}>100+</strong> stories shared</span>
           <span>🌍 <strong style={{ color: '#f0f2f8' }}>13</strong> countries</span>
         </div>
       </section>
@@ -75,7 +75,7 @@ export default function LandingPage() {
       {/* ── Features ── */}
       <section style={{ padding: '60px 24px', maxWidth: 1100, margin: '0 auto' }}>
         <h2 style={{ textAlign: 'center', fontSize: 32, fontWeight: 800, margin: '0 0 48px', letterSpacing: -1 }}>
-          Everything a drink lover needs
+          Everything a good night deserves
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
           {FEATURES.map(f => (
@@ -117,20 +117,20 @@ export default function LandingPage() {
       {/* ── CTA ── */}
       <section style={{ textAlign: 'center', padding: '80px 24px', background: 'linear-gradient(135deg, rgba(10,102,194,0.12), rgba(29,143,232,0.08))' }}>
         <h2 style={{ fontSize: 36, fontWeight: 800, margin: '0 0 16px', letterSpacing: -1 }}>
-          The bar is open. Pull up a seat.
+          The door is open. Pull up a chair.
         </h2>
         <p style={{ color: '#8b8fa8', fontSize: 16, marginBottom: 32, maxWidth: 500, margin: '0 auto 32px' }}>
-          Free forever. No ads. No data selling. Just drinks and good vibes.
+          Free forever. No ads. No data selling. Just your people, your places and your stories.
         </p>
         <button onClick={() => navigate('/login')} style={{ background: 'linear-gradient(135deg, #0a66c2, #1d8fe8)', border: 'none', borderRadius: 12, padding: '16px 40px', color: '#fff', fontSize: 17, fontWeight: 700, cursor: 'pointer', boxShadow: '0 6px 24px rgba(10,102,194,0.45)' }}>
-          Join DrinkedInn 🍺
+          Join DrinkedInn
         </button>
       </section>
 
       {/* ── Footer ── */}
       <footer style={{ textAlign: 'center', padding: '32px 24px', borderTop: '1px solid #1f2233', color: '#555870', fontSize: 13 }}>
         <Logo size="md" />
-        <div style={{ marginTop: 12 }}>© {new Date().getFullYear()} DrinkedInn. Where professionals actually unwind.</div>
+        <div style={{ marginTop: 12 }}>© {new Date().getFullYear()} DrinkedInn. Your people. Your places. Your stories.</div>
         <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 20 }}>
           <a href="/login" style={{ color: '#8b8fa8', textDecoration: 'none' }}>Sign Up</a>
           <a href="/admin" style={{ color: '#8b8fa8', textDecoration: 'none' }}>Admin</a>

@@ -233,7 +233,7 @@ export default function CreatePostScreen({ navigation }) {
             ref={inputRef}
             value={content}
             onChangeText={setContent}
-            placeholder="What's in your glass tonight?"
+            placeholder="Share a moment — where you are, who you're with…"
             placeholderTextColor={t.textMuted}
             multiline
             style={[styles.textArea, { color: t.text }]}

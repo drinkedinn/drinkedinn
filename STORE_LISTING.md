@@ -20,34 +20,34 @@ DrinkedInn
 
 **Subtitle (iOS, 30 char max):**
 ```
-Every good story starts here
+Stories start here
 ```
-*(28 characters)*
+*(18 characters)*
 
 **Short description (Play, 80 char max):**
 ```
-Share the good moments and the people you spend them with. Pull up a chair.
+Your people. Your places. Your stories. Keep the nights worth remembering.
 ```
-*(74 characters)*
+*(73 characters)*
 
 ---
 
 ## Description
 
 ```
-Some evenings are worth remembering. DrinkedInn is where you keep them.
+Some nights are worth remembering. DrinkedInn is where you keep them.
 
-Share the moment — the table, the view, the people, the glass in your hand.
-Find others who care about what's in theirs. An inn has always been where
-people gather; this is that, on your phone.
+Your people, your places, your stories — the table, the view, the ones who
+were there. An inn has always been where people gather, catch up and tell
+each other what they've been up to. This is that, on your phone.
 
 WHAT YOU CAN DO
 
-• Share a pour — a photo, a note, where you are, who you're with
-• Cheer and comment on what other people are drinking
-• Build your shelf — keep track of bottles you own and want to try
-• Join groups around whisky, wine, beer, cocktails and no/low
-• Follow people whose taste you trust
+• Share a moment — a photo, a note, where you are, who you're with
+• Keep the places you loved, so you can find your way back to them
+• Follow the friends and regulars whose taste you actually trust
+• Build a shelf of what you've tried and what you want to try next
+• Join groups and events around what you're into — including no/low
 
 BUILT TO BE PUT DOWN
 
@@ -89,6 +89,14 @@ case it would also undercut the trademark position.
 ---
 
 ## Age rating
+
+> **Marketing voice vs. disclosure.** The public copy above deliberately leads
+> with people, moments and places rather than alcohol — that is positioning,
+> and it is accurate. It must NOT be carried into the sections below. The age
+> questionnaire, the review notes and the data disclosures describe what the
+> app actually does, in plain terms, including its alcohol-related
+> functionality. Softening those to match the marketing tone is how an app gets
+> pulled after launch, which is far worse than a stricter rating.
 
 **Declare 18+ / Mature 17+ on both stores.**
 

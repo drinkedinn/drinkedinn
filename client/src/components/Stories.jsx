@@ -30,7 +30,7 @@ export default function Stories() {
 
       {showDrinkPicker && (
         <div className="slideDown" style={{ marginBottom: 12, padding: 12, background: t.accentSoft, borderRadius: 12, border: `1px solid ${t.border}` }}>
-          <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 8 }}>What's in your glass?</div>
+          <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 8 }}>Share a moment</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {drinks.map(d => (
               <button key={d} onClick={() => addStory(d)} style={{

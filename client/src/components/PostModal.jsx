@@ -120,7 +120,7 @@ export default function PostModal({ onClose, onPosted }) {
         </div>
 
         <textarea autoFocus value={text} onChange={e => setText(e.target.value)}
-          placeholder="What's in your glass? Where are you pouring tonight? Share the vibes… 🥃"
+          placeholder="Share a moment — where you are, who you're with, what made it worth remembering…"
           style={{
             width: '100%', minHeight: 130, background: t.inputBg,
             border: `1.5px solid ${t.border}`, borderRadius: 12, padding: 16,
@@ -133,7 +133,7 @@ export default function PostModal({ onClose, onPosted }) {
 
         {/* Drink picker */}
         <div style={{ marginTop: 14 }}>
-          <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 8 }}>What's in your glass?</div>
+          <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 8 }}>Share a moment</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {DRINKS.map(d => (
               <button key={d} onClick={() => setDrink(d)} style={{

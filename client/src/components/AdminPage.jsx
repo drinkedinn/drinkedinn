@@ -45,11 +45,11 @@ const MARKETING_SKILLS = [
     name: 'Copy & Messaging',
     desc: 'Taglines, landing page copy, value propositions for DrinkedInn',
     prompts: [
-      'Write 10 headline variations for the DrinkedInn homepage. Current: "Every good story starts at the inn"',
+      'Write 10 headline variations for the DrinkedInn homepage. Current: "Stories start here." Lead with people, moments and places — never alcohol.',
       'Write the hero section copy for drinkedinn.com — include headline, subheadline, and CTA',
       'Create 5 value proposition statements for DrinkedInn targeting: (1) whisky collectors, (2) craft beer lovers, (3) wine professionals',
       'Write an "About Us" page for DrinkedInn that feels authentic, not corporate',
-      'Rewrite the sign-up CTA to maximise conversions. Current CTA: "Join the Bar 🍺"',
+      'Rewrite the sign-up CTA to maximise conversions. Current CTA: "Pull Up a Chair"',
     ],
   },
   {

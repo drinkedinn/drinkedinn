@@ -240,7 +240,7 @@ export default function EditProfileModal({ onClose }) {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 12, color: t.textMuted, fontWeight: 600, display: 'block', marginBottom: 6 }}>Bio</label>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell the world what's in your glass…"
+              <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="What kind of nights do you love? Where do you keep ending up?…"
                 style={{ ...inputStyle, minHeight: 80, resize: 'vertical', lineHeight: 1.5 }}
                 onFocus={e => e.target.style.borderColor = t.accent} onBlur={e => e.target.style.borderColor = t.border} />
             </div>
@@ -493,12 +493,12 @@ export default function EditProfileModal({ onClose }) {
                     style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#25D366', color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
                     WhatsApp
                   </a>
-                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on DrinkedInn — the social network for drink lovers! 🥃🍷🍺\n${window.location.origin}/?ref=${referralCode}`)}`}
+                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on DrinkedInn — your people, your places, your stories.\n${window.location.origin}/?ref=${referralCode}`)}`}
                     target="_blank" rel="noreferrer"
                     style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#1DA1F2', color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
                     Twitter / X
                   </a>
-                  <a href={`mailto:?subject=${encodeURIComponent('Join me on DrinkedInn!')}&body=${encodeURIComponent(`Hey! I'm on DrinkedInn, the social network for drink lovers. Join me: ${window.location.origin}/?ref=${referralCode}`)}`}
+                  <a href={`mailto:?subject=${encodeURIComponent('Join me on DrinkedInn!')}&body=${encodeURIComponent(`Hey! I'm on DrinkedInn — it's where I keep the places and nights worth remembering. Join me: ${window.location.origin}/?ref=${referralCode}`)}`}
                     style={{ flex: 1, minWidth: 120, textAlign: 'center', background: t.accent, color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
                     Email
                   </a>
