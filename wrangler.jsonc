@@ -48,14 +48,18 @@
     }
   ],
 
-  "triggers": {
-    "crons": [
-      // Daily re-engagement digest, 16:00 UTC — matches the previous schedule.
-      "0 16 * * *",
-      // Autopost for demo accounts, every four hours.
-      "0 */4 * * *"
-    ]
-  },
+  // CRON TRIGGERS ARE DISABLED.
+  //
+  // The Workers free plan allows 5 cron triggers per ACCOUNT, and this account
+  // has already used them on other Workers. Rather than fail every deploy, the
+  // scheduled work runs over HTTP instead: /api/jobs/lifecycle already exists
+  // and is authenticated with CRON_SECRET, so any external scheduler can call
+  // it. See CLOUDFLARE.md.
+  //
+  // Re-enable by uncommenting once a slot is free or the account is on Paid.
+  // "triggers": {
+  //   "crons": ["0 16 * * *", "0 */4 * * *"]
+  // },
 
   "vars": {
     "NODE_ENV": "production",

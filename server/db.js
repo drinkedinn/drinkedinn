@@ -1,39 +1,58 @@
 const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
 
-const client = createClient({
-  url: process.env.TURSO_DB_URL || 'file:./drinkeden.db',
-  authToken: process.env.TURSO_DB_AUTH_TOKEN,
-});
+// Created lazily, not at module load.
+//
+// Cloudflare validates a Worker by importing it at deploy time, before secrets
+// are readable. Building the client eagerly meant TURSO_DB_URL was undefined,
+// the 'file:' fallback kicked in, and the web client — which only speaks
+// http/https/libsql — rejected it, failing the whole deploy.
+//
+// Deferring until first query also means an unconfigured database surfaces as a
+// clear runtime error on one request rather than a crash at import.
+let _client = null;
+function client_() {
+  if (_client) return _client;
+
+  const url = process.env.TURSO_DB_URL
+    || (typeof globalThis.WebSocketPair === 'undefined' ? 'file:./drinkeden.db' : null);
+
+  if (!url) {
+    throw new Error('[db] TURSO_DB_URL is not set. Workers cannot use a local file database.');
+  }
+
+  _client = createClient({ url, authToken: process.env.TURSO_DB_AUTH_TOKEN });
+  return _client;
+}
 
 // ── Async helpers ──────────────────────────────────────────────────────────────
 
 // get - returns first row or null
 async function get(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return r.rows[0] || null;
 }
 
 // all - returns array of rows
 async function all(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return r.rows;
 }
 
 // run - returns { lastInsertRowid, changes }
 async function run(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return { lastInsertRowid: Number(r.lastInsertRowid), changes: r.rowsAffected };
 }
 
 // exec - run raw SQL (for CREATE TABLE etc.)
 async function exec(sql) {
-  await client.executeMultiple(sql);
+  await client_().executeMultiple(sql);
 }
 
 // batch - multiple statements atomically
 async function batch(stmts) {
-  return client.batch(stmts, 'write');
+  return client_().batch(stmts, 'write');
 }
 
 // ── init() — create tables and run migrations ─────────────────────────────────
@@ -844,4 +863,9 @@ async function init() {
   console.log('✅ DB init complete');
 }
 
-module.exports = { client, get, all, run, exec, batch, init };
+// `client` is exposed as a getter so callers still work, but nothing is
+// constructed until it is actually touched.
+module.exports = {
+  get client() { return client_(); },
+  get, all, run, exec, batch, init,
+};

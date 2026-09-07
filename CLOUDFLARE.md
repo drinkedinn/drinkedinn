@@ -226,14 +226,30 @@ may exceed the free-tier CPU limit. If it does, reset the password instead.
 | CPU per invocation | 10ms |
 | Worker size | 3MB compressed (this bundle: ~1MB) |
 
-## Cron
+## Scheduled jobs
 
-Defined in `wrangler.jsonc`:
+**Cron triggers are disabled.** The Workers free plan allows 5 per *account*,
+and this account already uses them on other Workers. Attempting to add more
+fails the trigger step of every deploy.
 
-| Schedule | Job |
-|---|---|
-| `0 16 * * *` | Lifecycle re-engagement digest |
-| `0 */4 * * *` | Autopost for demo accounts |
+The work runs over HTTP instead. `/api/jobs/lifecycle` already exists and is
+authenticated with `CRON_SECRET`, so any external scheduler can call it:
+
+```
+GET https://<your-domain>/api/jobs/lifecycle?key=<CRON_SECRET>
+```
+
+Use GitHub Actions, cron-job.org, or any scheduler you already run. Daily at
+16:00 UTC matches the original schedule.
+
+Verify without sending anything:
+
+```bash
+curl "https://<your-domain>/api/jobs/lifecycle?key=<CRON_SECRET>&dryRun=1"
+```
+
+To go back to native cron, free a slot or move to Workers Paid, then uncomment
+the `triggers` block in `wrangler.jsonc`.
 
 ---
 

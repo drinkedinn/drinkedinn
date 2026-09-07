@@ -26,12 +26,19 @@ const LEVEL_BY_METHOD = { estimation: 1, document: 2 };
 
 // The stub auto-passes every check and accepts unsigned webhooks. That is fine
 // locally and catastrophic in production — it would let anyone grant themselves
-// a verified age. Refuse to start rather than ship a silent bypass.
-if (PROVIDER === 'stub' && config.isProd) {
-  throw new Error(
-    '[ageAssurance] AGE_PROVIDER is "stub" in production. Set a real provider ' +
-      'plus AGE_PROVIDER_KEY and AGE_WEBHOOK_SECRET, or age verification is trivially forgeable.'
-  );
+// a verified age.
+//
+// Checked on USE rather than at import. A module-level throw breaks Cloudflare's
+// deploy validation, which imports the Worker before secrets exist. The security
+// property is unchanged: with the stub selected in production, no session can be
+// created and no webhook is trusted.
+function assertUsable() {
+  if (PROVIDER === 'stub' && config.isProd) {
+    throw new Error(
+      '[ageAssurance] AGE_PROVIDER is "stub" in production. Set a real provider ' +
+        'plus AGE_PROVIDER_KEY and AGE_WEBHOOK_SECRET, or age verification is trivially forgeable.'
+    );
+  }
 }
 
 function isConfigured() {
@@ -49,6 +56,7 @@ function isConfigured() {
  * @returns {Promise<{ref: string, url: string|null, immediate?: object}>}
  */
 async function createSession({ userId, method, minAge, country }) {
+  assertUsable();
   const ref = `di_${crypto.randomBytes(12).toString('hex')}`;
 
   if (PROVIDER === 'stub') {

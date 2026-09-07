@@ -15,6 +15,10 @@ const express = require('express');
 const db = require('./db');
 const errorReporter = require('./lib/errorReporter');
 const { createApp } = require('./app');
+const config = require('./config');
+
+// Node has a startup phase, so fail loudly here rather than on first request.
+config.assertReady();
 
 errorReporter.installProcessHandlers();
 
