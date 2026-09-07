@@ -14,6 +14,7 @@ const jwt = require('jsonwebtoken');
 const config = require('../config');
 const db = require('../db');
 
+const { countryOf } = require('../lib/clientCountry');
 const router = express.Router();
 const MAX_BATCH = 50;
 
@@ -38,8 +39,8 @@ router.post('/events', softAuth, async (req, res) => {
   if (!batch.length) return res.json({ accepted: 0 });
 
   const country = String(
-    req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || req.analyticsUser?.country_code || ''
-  ).toUpperCase().slice(0, 2);
+    countryOf(req, req.analyticsUser?.country_code)
+  );
 
   let accepted = 0;
   for (const e of batch) {

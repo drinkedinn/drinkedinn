@@ -14,6 +14,7 @@ const auth = require('../middleware/auth');
 const jurisdictions = require('../lib/jurisdictions');
 const assurance = require('../lib/ageAssurance');
 
+const { countryOf } = require('../lib/clientCountry');
 const router = express.Router();
 
 // Apply an outcome to both the attempt row and the user. Idempotent: a provider
@@ -58,8 +59,7 @@ router.post('/session', auth, async (req, res) => {
       'SELECT id, country_code, age_assurance_level FROM users WHERE id = ?',
       [req.user.id]
     );
-    const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || user?.country_code || '')
-      .toUpperCase().slice(0, 2);
+    const country = countryOf(req, user?.country_code);
     const rules = jurisdictions.rulesFor(country);
 
     const wanted = assurance.LEVEL_BY_METHOD[method];
@@ -138,8 +138,7 @@ router.get('/status', auth, async (req, res) => {
       'SELECT country_code, age_assurance_level, age_assurance_at FROM users WHERE id = ?',
       [req.user.id]
     );
-    const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || user?.country_code || '')
-      .toUpperCase().slice(0, 2);
+    const country = countryOf(req, user?.country_code);
     const rules = jurisdictions.rulesFor(country);
     const level = user?.age_assurance_level || 0;
 

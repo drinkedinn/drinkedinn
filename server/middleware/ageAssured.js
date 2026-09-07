@@ -12,6 +12,7 @@
 const db = require('../db');
 const jurisdictions = require('../lib/jurisdictions');
 
+const { countryOf } = require('../lib/clientCountry');
 function requireAgeAssurance(minLevel = null) {
   return async (req, res, next) => {
     try {
@@ -19,8 +20,7 @@ function requireAgeAssurance(minLevel = null) {
         'SELECT country_code, age_assurance_level FROM users WHERE id = ?',
         [req.user.id]
       );
-      const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || user?.country_code || '')
-        .toUpperCase().slice(0, 2);
+      const country = countryOf(req, user?.country_code);
       const rules = jurisdictions.rulesFor(country);
 
       // Where the platform shouldn't operate, nothing else matters.

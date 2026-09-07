@@ -14,6 +14,7 @@ const { sendVerificationEmail } = require('../lib/mailer');
 const jurisdictions = require('../lib/jurisdictions');
 const analytics = require('../lib/analytics');
 
+const { countryOf } = require('../lib/clientCountry');
 let z;
 try { ({ z } = require('zod')); } catch {}
 
@@ -23,8 +24,11 @@ const LOCK_THRESHOLD = 8;
 const LOCK_MINUTES = 15;
 
 function signToken(user) {
+  // `purpose` marks this as a session token. Single-purpose tokens signed with
+  // the same secret (the digest unsubscribe link in lib/lifecycle.js) carry a
+  // different purpose, and middleware/auth.js accepts only this one.
   return jwt.sign(
-    { sub: user.id, tv: user.token_version ?? 0 },
+    { sub: user.id, tv: user.token_version ?? 0, purpose: 'session' },
     config.jwtSecret,
     { expiresIn: config.jwt.expiresIn }
   );
@@ -44,8 +48,7 @@ function ageFromDob(dob) {
 // The client calls this before rendering the sign-up form so the age gate shows
 // the correct minimum for the visitor's country rather than a hardcoded 18.
 router.get('/rules', (req, res) => {
-  const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || req.query.country || '')
-    .toUpperCase().slice(0, 2);
+  const country = countryOf(req, req.query.country);
   const r = jurisdictions.rulesFor(country);
   res.json({
     country: r.country,
@@ -71,7 +74,7 @@ router.post('/register', async (req, res) => {
 
   // Jurisdiction drives the age gate — a flat 18 is wrong in most markets.
   // Trust the client hint only as a starting point; the edge header wins.
-  const country = (req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || country_code || '').toUpperCase().slice(0, 2);
+  const country = countryOf(req, country_code);
   const rules = jurisdictions.rulesFor(country);
 
   if (jurisdictions.isProhibited(country)) {

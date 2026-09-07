@@ -11,13 +11,11 @@ const auth = require('../middleware/auth');
 const delivery = require('../lib/adDelivery');
 const jurisdictions = require('../lib/jurisdictions');
 
+const { countryOf } = require('../lib/clientCountry');
 const router = express.Router();
 
-function countryOf(req, user) {
-  return String(
-    req.headers['x-vercel-ip-country'] || req.headers['cf-ipcountry'] || user?.country_code || ''
-  ).toUpperCase().slice(0, 2);
-}
+// Local shorthand: these call sites hold a user row, not a bare country code.
+const countryFor = (req, user) => countryOf(req, user?.country_code);
 
 // ── Serve ───────────────────────────────────────────────────────────────────
 // Returns at most one placement. The feed asks for this separately from posts
@@ -29,7 +27,7 @@ router.get('/serve', auth, async (req, res) => {
          FROM users WHERE id = ?`,
       [req.user.id]
     );
-    const country = countryOf(req, user);
+    const country = countryFor(req, user);
 
     const check = await delivery.eligibleFor(user, country);
     if (!check.eligible) {
@@ -118,7 +116,7 @@ router.post('/:id/click', auth, async (req, res) => {
       creativeId: creative.id,
       campaignId: creative.campaign_id,
       userId: req.user.id,
-      country: countryOf(req, user),
+      country: countryFor(req, user),
       assured: (user?.age_assurance_level || 0) > 0,
     });
     res.json({ ok: true });
@@ -140,7 +138,7 @@ router.put('/preferences', auth, async (req, res) => {
 
 router.get('/preferences', auth, async (req, res) => {
   const u = await db.get('SELECT brand_content_opt_out, age_assurance_level, country_code FROM users WHERE id = ?', [req.user.id]);
-  const rules = jurisdictions.rulesFor(countryOf(req, u));
+  const rules = jurisdictions.rulesFor(countryFor(req, u));
   res.json({
     brand_content_opt_out: u?.brand_content_opt_out === 1,
     // Tell the user honestly why they may not see brand content.

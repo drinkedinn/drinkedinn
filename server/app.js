@@ -77,6 +77,12 @@ function createApp({ isWorker = IS_WORKER } = {}) {
   // req.rawBody, which webhook signature checks depend on.
   app.use(jsonBody({ limit: 1024 * 1024 }));
 
+  // Drop the forgeable geo header before any route can read it. Jurisdiction
+  // decisions must come from an edge-set header (see lib/clientCountry.js);
+  // this stops a future call site reintroducing the bypass by reading the
+  // Vercel one directly.
+  app.use(require('./lib/clientCountry').stripUntrustedGeoHeaders);
+
   // Health must reflect whether the app can actually SERVE, not merely whether
   // the process booted. Reporting "ok" while the database is unreachable is
   // worse than no health check at all — monitoring goes green through an
@@ -170,7 +176,14 @@ function createApp({ isWorker = IS_WORKER } = {}) {
       maxAutoSpend: 500,
       llm: { provider: process.env.LLM_PROVIDER || 'simulation' },
     });
-    app.use('/api/agents', require('./routes/agents')(orchestrator));
+    // Admin-gated at the mount. routes/agents.js applies no middleware of its
+    // own, so without this the whole orchestrator surface — read state, submit
+    // tasks, resolve escalations, rewrite the global LLM config and its spend
+    // ceiling — answered unauthenticated callers. "Internal admin surface" was
+    // a description, not an enforced property.
+    const requireAuth = require('./middleware/auth');
+    const { requireAdmin } = requireAuth;
+    app.use('/api/agents', requireAuth, requireAdmin, require('./routes/agents')(orchestrator));
     app.locals.orchestrator = orchestrator;
   } catch (e) {
     console.warn('agent system unavailable:', e.message);
