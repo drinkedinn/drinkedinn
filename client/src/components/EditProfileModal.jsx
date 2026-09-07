@@ -105,10 +105,16 @@ export default function EditProfileModal({ onClose }) {
   const changePassword = async () => {
     if (!currentPw || !newPw) { setError('Fill in both passwords'); return; }
     if (newPw !== confirmPw) { setError('New passwords do not match'); return; }
-    if (newPw.length < 6) { setError('New password must be at least 6 characters'); return; }
+    // 8, matching the server. At 6 the server rejected it with its own wording
+    // after the form had already accepted it.
+    if (newPw.length < 8) { setError('New password must be at least 8 characters'); return; }
     setSaving(true); setError(''); setSuccess('');
     try {
-      await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw });
+      const { data } = await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw });
+      // Changing the password revokes every existing session, this one
+      // included. The server returns a replacement token; without storing it
+      // the next request 401s and the user is bounced to sign-in.
+      if (data?.token) localStorage.setItem('di_token', data.token);
       setSuccess('Password changed!');
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
     } catch (err) {

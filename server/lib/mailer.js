@@ -85,13 +85,28 @@ async function sendResetEmail(to, link) {
   });
 }
 
+// Digest content is user-generated: `title` embeds users.name and `body` is a
+// snippet of post content (see lib/lifecycle.js). Both went into the HTML
+// template raw, so a display name like
+//   <a href="http://evil/">Verify your account</a>
+// rendered as live markup inside an email that genuinely came from DrinkedInn —
+// ideal phishing material, and it reaches people who never saw the profile.
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function sendDigestEmail(to, { subject, heading, intro, items = [], ctaUrl, ctaLabel, unsubscribeUrl }) {
   const itemsHtml = items
     .map(
       (i) =>
         `<tr><td style="padding:10px 0;border-bottom:1px solid #eee;">
-           <div style="font-weight:600;color:#1a1a1a;">${i.title}</div>
-           ${i.body ? `<div style="color:#555;font-size:14px;margin-top:2px;">${i.body}</div>` : ''}
+           <div style="font-weight:600;color:#1a1a1a;">${escapeHtml(i.title)}</div>
+           ${i.body ? `<div style="color:#555;font-size:14px;margin-top:2px;">${escapeHtml(i.body)}</div>` : ''}
          </td></tr>`
     )
     .join('');
@@ -103,15 +118,15 @@ async function sendDigestEmail(to, { subject, heading, intro, items = [], ctaUrl
     text: `${heading}\n\n${intro}\n\n${itemsText}\n\n${ctaLabel}: ${ctaUrl}\n\nManage emails: ${unsubscribeUrl}`,
     html: `
       <div style="max-width:520px;margin:0 auto;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1a1a1a;">
-        <h2 style="margin:0 0 4px;">${heading}</h2>
-        <p style="color:#555;font-size:15px;margin:0 0 16px;">${intro}</p>
+        <h2 style="margin:0 0 4px;">${escapeHtml(heading)}</h2>
+        <p style="color:#555;font-size:15px;margin:0 0 16px;">${escapeHtml(intro)}</p>
         ${items.length ? `<table style="width:100%;border-collapse:collapse;">${itemsHtml}</table>` : ''}
         <p style="margin:24px 0;">
-          <a href="${ctaUrl}" style="background:#C8831F;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">${ctaLabel}</a>
+          <a href="${escapeHtml(ctaUrl)}" style="background:#C8831F;color:#fff;text-decoration:none;padding:12px 22px;border-radius:8px;font-weight:600;display:inline-block;">${escapeHtml(ctaLabel)}</a>
         </p>
         <p style="color:#999;font-size:12px;margin-top:28px;border-top:1px solid #eee;padding-top:12px;">
           You're getting this because you have digest emails on.
-          <a href="${unsubscribeUrl}" style="color:#999;">Turn these off</a>. Please drink responsibly.
+          <a href="${escapeHtml(unsubscribeUrl)}" style="color:#999;">Turn these off</a>. Please drink responsibly.
         </p>
       </div>`,
   });

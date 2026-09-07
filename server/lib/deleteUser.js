@@ -31,7 +31,38 @@ const OWNED = [
   ['notification_prefs', ['user_id']],
   ['push_subscriptions', ['user_id']],
   ['password_resets', ['user_id']],
+
+  // Added later than the list above and missed by it, so the function reported
+  // {ok:true} — and routes/users.js answered {deleted:true} to a GDPR / App
+  // Store 5.1.1(v) erasure request — while this data was still in the database.
+  // Verified against db.js by diffing every CREATE TABLE carrying a user
+  // reference against this list; these were the remainder.
+  ['blocked_users', ['blocker_id', 'blocked_id']],
+  ['age_checks', ['user_id']],
+  ['ad_events', ['user_id']],
+  ['analytics_events', ['user_id']],
+  ['device_tokens', ['user_id']],
+  ['brand_members', ['user_id']],
+  ['error_occurrences', ['user_id']],
 ];
+
+// Tables that reference a user and are DELIBERATELY not erased. Listed
+// explicitly so the coverage test can tell a considered exception from a
+// forgotten table.
+const RETAINED = [
+  // Moderation and administrative audit trail. Erasing it would destroy the
+  // record of actions taken against abusive accounts — including the evidence
+  // for a ban that a deleted-and-recreated account is trying to escape.
+  // Retention here is a legitimate-interest / legal-defence basis rather than
+  // an oversight, and actor_id is the acting ADMIN, not the deleted member.
+  // `target_id` is a generic TEXT id qualified by target_type, so it is not
+  // reliably a user reference at all.
+  'admin_audit',
+];
+
+// Handled explicitly in deleteUserCompletely() rather than through OWNED,
+// because they need a subquery or a specific ordering.
+const HANDLED_DIRECTLY = ['posts', 'poll_options', 'featured_posts'];
 
 async function safeRun(sql, args) {
   try {
@@ -79,4 +110,4 @@ async function deleteUserCompletely(userId) {
   return { ok: true };
 }
 
-module.exports = { deleteUserCompletely };
+module.exports = { deleteUserCompletely, OWNED, RETAINED, HANDLED_DIRECTLY };

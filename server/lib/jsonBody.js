@@ -23,7 +23,16 @@ function jsonBody({ limit = DEFAULT_LIMIT } = {}) {
     if (method === 'GET' || method === 'HEAD') { req.body = {}; return next(); }
 
     const contentType = String(req.headers['content-type'] || '');
-    if (!contentType.includes('application/json')) return next();
+    if (!contentType.includes('application/json')) {
+      // req.body must always be an object. Leaving it undefined meant every
+      // handler that destructures it (`const { email } = req.body`) threw a
+      // TypeError inside an async function — and Express 4 does not forward
+      // async rejections, so no error handler ran and no response was ever
+      // written. A POST to /auth/login with a missing or wrong Content-Type
+      // simply hung until the client gave up.
+      req.body = {};
+      return next();
+    }
 
     let size = 0;
     const chunks = [];

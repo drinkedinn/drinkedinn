@@ -130,8 +130,18 @@ router.post('/:id/connect', auth, async (req, res) => {
 
 router.get('/:id', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.params.id]);
+    // This is the PUBLIC profile. It previously reused the /me column list,
+    // which includes email and is_admin — so any signed-in account could read
+    // every member's email address by walking sequential ids, and learn which
+    // accounts are administrators. Neither belongs in someone else's profile.
+    const user = await db.get('SELECT id, name, title, avatar, bio, drinks, onboarded, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.params.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Viewing your own profile through this route still shows your own email.
+    if (String(req.user.id) === String(req.params.id)) {
+      const self = await db.get('SELECT email, is_admin FROM users WHERE id = ?', [req.user.id]);
+      Object.assign(user, self);
+    }
 
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.params.id]);
     const connections = connRow?.count || 0;

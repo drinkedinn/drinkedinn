@@ -244,12 +244,19 @@ router.post('/change-password', requireAuth, async (req, res) => {
     const valid = await password_.verify(currentPassword, user.password);
     if (!valid) return res.status(401).json({ error: 'Current password is incorrect' });
     const hash = await password_.hash(newPassword);
-    // Also bump token_version to revoke all other sessions
+    // Bump token_version so every existing session dies.
     await db.run(
       'UPDATE users SET password = ?, token_version = COALESCE(token_version, 0) + 1 WHERE id = ?',
       [hash, req.user.id]
     );
-    res.json({ success: true });
+
+    // "Every existing session" includes the caller's own. Returning only
+    // {success:true} left the client holding a token that the request had just
+    // invalidated, so changing your password silently signed you out of the
+    // device you changed it on — which reads as the change having failed.
+    // Hand back a token minted at the new version instead.
+    const updated = await db.get('SELECT id, token_version FROM users WHERE id = ?', [req.user.id]);
+    res.json({ success: true, token: signToken(updated) });
   } catch (err) {
     res.status(500).json({ error: 'Password change failed' });
   }

@@ -179,18 +179,23 @@ function WhiskyPourLoader({ t }) {
   );
 }
 
+// Keyed by the TAB ID the app passes as `mode` (App.jsx TABS / Navbar), not by
+// the API path. These disagreed: the tab is 'cheers' everywhere, the key was
+// 'cheered', so the lookup missed, fell through to the '/posts' default, and
+// the Cheers tab quietly rendered the ordinary home feed while its header still
+// said "Posts You Cheered".
 const ENDPOINTS = {
   home: '/posts',
   explore: '/posts/explore',
   trips: '/posts/trips',
-  cheered: '/posts/cheered',
+  cheers: '/posts/cheered',
 };
 
 const EMPTY_MESSAGES = {
   home: { icon: '🥃', text: 'No pours yet. Be the first to share!' },
   explore: { icon: '🔥', text: 'Nothing trending yet. Start pouring!' },
   trips: { icon: '✈️', text: 'No travel pours yet. Tag a location in your next post!' },
-  cheered: { icon: '🥂', text: "You haven't cheered any posts yet. Go explore and raise a glass!" },
+  cheers: { icon: '🥂', text: "You haven't cheered any posts yet. Go explore and raise a glass!" },
   hashtag: { icon: '#️⃣', text: 'No posts with this hashtag yet.' },
 };
 

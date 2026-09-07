@@ -18,8 +18,24 @@ const SUGGESTIONS = [
 ];
 
 /* ── Tiny markdown renderer (bold + newlines only) ─────── */
+// The output goes to dangerouslySetInnerHTML, so it MUST be escaped first.
+// Without this, any < > in a message became live markup in the app's own
+// origin — where the JWT is kept in localStorage. It applies to the assistant's
+// streamed reply as much as to what the user typed.
+//
+// Escape first, then insert our own tags: the markup we add below is the only
+// markup that can survive.
+function escapeHtml(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function renderMd(text) {
-  return text
+  return escapeHtml(text)
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br/>');
 }

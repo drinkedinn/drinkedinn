@@ -92,18 +92,22 @@ router.post('/chat', auth, async (req, res) => {
   const userId = req.user.id;
 
   // Pull user context from DB
-  const user       = db.prepare('SELECT name, title, drinks FROM users WHERE id = ?').get(userId) || {};
-  const ratings    = db.prepare(`
+  // db is the async Turso/libSQL wrapper (get/all/run/exec/batch/init) — it has
+  // no better-sqlite3 prepare(). Calling it threw a TypeError before anything
+  // was written, and because Express 4 does not forward async rejections the
+  // request hung instead of failing, so every sommelier chat silently timed out.
+  const user       = (await db.get('SELECT name, title, drinks FROM users WHERE id = ?', [userId])) || {};
+  const ratings    = await db.all(`
     SELECT drink_name, distillery, drink_type, rating, nose, palate, finish
     FROM drink_ratings WHERE user_id = ? ORDER BY rating DESC LIMIT 25
-  `).all(userId);
-  const collection = db.prepare(`
+  `, [userId]);
+  const collection = await db.all(`
     SELECT name, distillery, drink_type, vintage, rating, notes
     FROM collection WHERE user_id = ? LIMIT 20
-  `).all(userId);
-  const bucketList = db.prepare(`
+  `, [userId]);
+  const bucketList = await db.all(`
     SELECT drink_name, checked FROM bucket_list WHERE user_id = ? LIMIT 15
-  `).all(userId);
+  `, [userId]);
 
   const systemPrompt = buildSystemPrompt(user, ratings, collection, bucketList);
 

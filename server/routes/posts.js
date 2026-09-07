@@ -4,7 +4,7 @@ const auth = require('../middleware/auth');
 const { notify: notifyEngine } = require('../lib/notify');
 const { touchStreak } = require('../lib/streaks');
 const { screenContent } = require('../lib/contentFilter');
-const { blockedIds, filterBlocked } = require('../lib/blocking');
+const { blockedIds, filterBlocked, isBlocked } = require('../lib/blocking');
 const analytics = require('../lib/analytics');
 
 const router = express.Router();
@@ -38,6 +38,13 @@ const bumpStreak = async (userId, action) => {
   try { await touchStreak(userId, action); } catch (e) { console.error('[streak]', e.message); }
 };
 
+// Blocking is mutual and is supposed to hide both parties from each other
+// everywhere (lib/blocking.js). Only the home feed applied it, so a blocked
+// user's posts still surfaced in explore, trips, cheered, hashtag results and
+// by direct id — which makes the block look broken to the person who set it.
+const hideBlocked = async (viewerId, rows) =>
+  filterBlocked(rows, await blockedIds(viewerId));
+
 router.get('/', auth, async (req, res) => {
   try {
     const posts = await db.all(POST_QUERY('ORDER BY p.created_at DESC LIMIT 80'), [req.user.id, req.user.id, req.user.id]);
@@ -62,7 +69,7 @@ router.get('/trending', auth, async (req, res) => {
 router.get('/explore', auth, async (req, res) => {
   try {
     const posts = await db.all(POST_QUERY('ORDER BY cheer_count DESC, comment_count DESC, p.created_at DESC LIMIT 50'), [req.user.id, req.user.id, req.user.id]);
-    res.json(posts);
+    res.json(await hideBlocked(req.user.id, posts));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch explore' });
   }
@@ -71,7 +78,7 @@ router.get('/explore', auth, async (req, res) => {
 router.get('/trips', auth, async (req, res) => {
   try {
     const posts = await db.all(POST_QUERY("WHERE p.location != '' AND p.location IS NOT NULL ORDER BY p.created_at DESC LIMIT 50"), [req.user.id, req.user.id, req.user.id]);
-    res.json(posts);
+    res.json(await hideBlocked(req.user.id, posts));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch trips' });
   }
@@ -80,7 +87,7 @@ router.get('/trips', auth, async (req, res) => {
 router.get('/cheered', auth, async (req, res) => {
   try {
     const posts = await db.all(POST_QUERY('WHERE p.id IN (SELECT post_id FROM cheers WHERE user_id = ?) ORDER BY p.created_at DESC LIMIT 50'), [req.user.id, req.user.id, req.user.id, req.user.id]);
-    res.json(posts);
+    res.json(await hideBlocked(req.user.id, posts));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch cheered posts' });
   }
@@ -90,7 +97,7 @@ router.get('/hashtag/:tag', auth, async (req, res) => {
   const tag = req.params.tag.startsWith('#') ? req.params.tag : '#' + req.params.tag;
   try {
     const posts = await db.all(POST_QUERY('WHERE p.content LIKE ? ORDER BY p.created_at DESC LIMIT 50'), [req.user.id, req.user.id, req.user.id, `%${tag}%`]);
-    res.json(posts);
+    res.json(await hideBlocked(req.user.id, posts));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch hashtag posts' });
   }
@@ -102,6 +109,8 @@ router.get('/:id(\\d+)', auth, async (req, res) => {
   try {
     const post = await db.get(POST_QUERY('WHERE p.id = ?'), [req.user.id, req.user.id, req.user.id, req.params.id]);
     if (!post) return res.status(404).json({ error: 'Post not found' });
+    // Same 404 as a genuinely missing post — do not confirm the author exists.
+    if (await isBlocked(req.user.id, post.user_id)) return res.status(404).json({ error: 'Post not found' });
     res.json(post);
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch post' });
@@ -176,7 +185,7 @@ router.post('/:id/repour', auth, async (req, res) => {
 router.get('/:id/comments', auth, async (req, res) => {
   try {
     const comments = await db.all('SELECT c.*, u.name, u.avatar FROM comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC', [req.params.id]);
-    res.json(comments);
+    res.json(await hideBlocked(req.user.id, comments));
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch comments' });
   }
