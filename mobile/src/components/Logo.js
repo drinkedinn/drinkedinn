@@ -9,7 +9,7 @@ export default function Logo({ size = 22 }) {
     <View style={styles.row}>
       <Text style={[styles.word, { fontSize: size }]}>Drinked</Text>
       <LinearGradient colors={gradients.blue} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chip}>
-        <Text style={[styles.chipText, { fontSize: size - 3 }]}>Inn 🍺</Text>
+        <Text style={[styles.chipText, { fontSize: size - 3 }]}>Inn</Text>
       </LinearGradient>
     </View>
   );

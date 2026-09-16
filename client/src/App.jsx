@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { useWindowSize } from './hooks/useWindowSize';
@@ -84,10 +84,11 @@ export default function App() {
   if (loading) return null;
   if (!user) {
     // Show landing page for root, auth for /login
-    if (location.pathname === '/') {
-      navigate('/welcome', { replace: true });
-      return null;
-    }
+    // <Navigate>, not navigate(): calling the imperative form during render
+    // is a React Router error, and in practice the redirect never committed —
+    // the component returned null and the visitor got a blank page. The
+    // landing page was unreachable from the root URL.
+    if (location.pathname === '/') return <Navigate to="/welcome" replace />;
     return <AuthPage />;
   }
   if (splash) return <Splash onDone={() => setSplash(false)} />;

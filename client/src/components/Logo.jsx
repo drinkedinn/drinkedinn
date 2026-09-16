@@ -15,7 +15,7 @@ export default function Logo({ size = 'md', onClick }) {
         borderRadius: big ? 8 : 5, padding: big ? '4px 10px' : '2px 7px',
         letterSpacing: -0.5, boxShadow: '0 2px 12px rgba(200,131,31,0.28)',
       }}>
-        Inn 🍺
+        Inn
       </span>
     </div>
   );

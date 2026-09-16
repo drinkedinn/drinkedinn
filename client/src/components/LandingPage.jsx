@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Logo from './Logo';
 
@@ -21,7 +21,8 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  if (user) { navigate('/', { replace: true }); return null; }
+  // Declarative redirect — see App.jsx for why navigate() must not be called here.
+  if (user) return <Navigate to="/" replace />;
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0b14', color: '#f0f2f8', fontFamily: "'Inter', 'SF Pro Display', sans-serif" }}>
