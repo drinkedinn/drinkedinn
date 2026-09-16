@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Logo from './Logo';
 
 export default function AgeGate({ children }) {
   const [ok, setOk] = useState(() => localStorage.getItem('di_age_ok') === '1');
@@ -13,13 +14,15 @@ export default function AgeGate({ children }) {
       padding: 24, fontFamily: "'Inter', sans-serif",
     }}>
       <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 56, marginBottom: 20 }}>🥃</div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
+          <Logo size="lg" />
+        </div>
         <h2 style={{ color: '#f0f2f8', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
-          Are you of legal drinking age?
+          Adults only
         </h2>
         <p style={{ color: '#8b8fa8', fontSize: 14, lineHeight: 1.6, marginBottom: 28 }}>
-          DrinkedInn is a platform about alcohol and drink culture. You must be of legal
-          drinking age in your country to enter.
+          DrinkedInn is for adults. To come in, you need to be of legal drinking age
+          where you live.
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
           <button
@@ -47,7 +50,7 @@ export default function AgeGate({ children }) {
           </button>
         </div>
         <p style={{ color: '#555870', fontSize: 11, marginTop: 20 }}>
-          By entering you confirm you are of legal drinking age in your jurisdiction.
+          By coming in, you confirm you're of legal drinking age where you live.
         </p>
       </div>
     </div>
