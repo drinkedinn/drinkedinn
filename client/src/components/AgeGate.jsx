@@ -15,7 +15,7 @@ export default function AgeGate({ children }) {
     }}>
       <div style={{ maxWidth: 400, width: '100%', textAlign: 'center' }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <Logo size="lg" />
+          <Logo size="lg" color="#f0f2f8" />
         </div>
         <h2 style={{ color: '#f0f2f8', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
           Adults only

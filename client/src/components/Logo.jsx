@@ -1,11 +1,14 @@
 import { useTheme } from '../context/ThemeContext';
 
-export default function Logo({ size = 'md', onClick }) {
+// `color` overrides the theme text colour for the "Drinked" half. Needed on
+// surfaces with a FIXED dark background — the age gate — where the theme's
+// light-mode text colour rendered dark-on-dark and the word vanished.
+export default function Logo({ size = 'md', onClick, color }) {
   const { t } = useTheme();
   const big = size === 'lg';
   return (
     <div onClick={onClick} style={{ display: 'flex', alignItems: 'center', gap: big ? 10 : 6, userSelect: 'none', cursor: onClick ? 'pointer' : 'default' }}>
-      <span style={{ fontWeight: 900, fontSize: big ? 32 : 22, color: t.text, letterSpacing: -1, transition: 'color 0.3s' }}>
+      <span style={{ fontWeight: 900, fontSize: big ? 32 : 22, color: color || t.text, letterSpacing: -1, transition: 'color 0.3s' }}>
         Drinked
       </span>
       <span style={{
