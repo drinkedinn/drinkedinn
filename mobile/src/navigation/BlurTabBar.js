@@ -48,7 +48,7 @@ export default function BlurTabBar({ state, navigation }) {
           ))}
         </View>
 
-        <Pressable onPress={() => { press(); navigation.navigate('Create'); }} style={styles.createWrap} hitSlop={8}>
+        <Pressable onPress={() => { press(); navigation.navigate('Compose'); }} style={styles.createWrap} hitSlop={8}>
           <LinearGradient colors={gradients.whisky} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.create}>
             <Text style={styles.createPlus}>+</Text>
           </LinearGradient>

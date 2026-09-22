@@ -108,7 +108,7 @@ export default function ThreadScreen({ navigation, route }) {
 
   const openProfile = useCallback(() => {
     if (!userId) return;
-    if (user && userId === user.id) navigation.navigate('Account');
+    if (user && userId === user.id) navigation.navigate('Profile');
     else navigation.navigate('User', { userId });
   }, [navigation, userId, user]);
 

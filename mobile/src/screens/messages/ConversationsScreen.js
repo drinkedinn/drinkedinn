@@ -165,7 +165,7 @@ export default function ConversationsScreen({ navigation }) {
         border={false}
         right={
           <Bounce
-            onPress={() => navigation.navigate('Discover')}
+            onPress={() => navigation.navigate('Explore')}
             haptic="light"
             style={[styles.headerBtn, { backgroundColor: t.surfaceAlt }]}
             accessibilityLabel="Find someone to message"
@@ -213,7 +213,7 @@ export default function ConversationsScreen({ navigation }) {
                 title="Your table's set for two"
                 body="Open someone's profile and send the first note. Good conversations start somewhere."
                 actionLabel="Find people"
-                onAction={() => navigation.navigate('Discover')}
+                onAction={() => navigation.navigate('Explore')}
               />
             )
           }

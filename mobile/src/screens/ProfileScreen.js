@@ -2,8 +2,8 @@
 // Used for both your own profile and other people's. Tabs across pours,
 // the user's bar (collection), and earned badges.
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, Pressable, Share } from 'react-native';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Share } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -14,13 +14,8 @@ import { radius, type } from '../theme/tokens';
 import { Screen, Icon, Avatar, Bounce, Button, EmptyState, FadeIn, useToast } from '../components/ui';
 import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
-import Segmented from '../components/home/Segmented';
+import ProfilePillars from './profile';
 
-const TABS = [
-  { key: 'pours', label: 'Pours' },
-  { key: 'bar', label: 'Bar' },
-  { key: 'badges', label: 'Badges' },
-];
 
 function Stat({ value, label }) {
   const { t } = useTheme();
@@ -42,6 +37,7 @@ export default function ProfileScreen({ navigation, route }) {
 
   const [profile, setProfile] = useState(null);
   const [connected, setConnected] = useState(false);
+  const pillarsRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('pours');
   const [bar, setBar] = useState(null);
@@ -100,11 +96,6 @@ export default function ProfileScreen({ navigation, route }) {
     } catch {}
   };
 
-  const data = useMemo(() => {
-    if (tab === 'pours') return profile?.posts || [];
-    if (tab === 'bar') return bar || [];
-    return badges || [];
-  }, [tab, profile, bar, badges]);
 
   if (loading && !profile) {
     return (
@@ -135,7 +126,7 @@ export default function ProfileScreen({ navigation, route }) {
           <Icon name="share-outline" size={18} color={t.text} />
         </Bounce>
         {isMe && (
-          <Bounce onPress={() => navigation.navigate('Account')} haptic="light" style={[styles.circleBtn, { backgroundColor: t.surface, borderColor: t.border }]} accessibilityLabel="Settings">
+          <Bounce onPress={() => navigation.navigate('Profile')} haptic="light" style={[styles.circleBtn, { backgroundColor: t.surface, borderColor: t.border }]} accessibilityLabel="Settings">
             <Icon name="settings-outline" size={18} color={t.text} />
           </Bounce>
         )}
@@ -203,107 +194,32 @@ export default function ProfileScreen({ navigation, route }) {
         </View>
       </View>
 
-      <View style={{ marginTop: 22, marginBottom: 14 }}>
-        <Segmented options={TABS} value={tab} onChange={setTab} />
-      </View>
     </View>
   );
 
-  const renderItem = ({ item, index }) => {
-    if (tab === 'pours') {
-      return (
-        <FadeIn index={index}>
-          <PostCard
-            post={{
-              ...item,
-              name: profile.name,
-              avatar: profile.avatar,
-              title: profile.title,
-              verified: profile.verified,
-              premium: profile.premium,
-            }}
-            onOpen={(p) => navigation.navigate('PostDetail', { post: p })}
-            onProfile={() => {}}
-          />
-        </FadeIn>
-      );
-    }
 
-    if (tab === 'bar') {
-      const img = mediaUrl(item.image_url);
-      return (
-        <FadeIn index={index}>
-          <View style={[styles.bottle, { backgroundColor: t.surface, borderColor: t.border }]}>
-            {img ? (
-              <Image source={{ uri: img }} style={styles.bottleImg} contentFit="cover" transition={200} />
-            ) : (
-              <View style={[styles.bottleImg, { backgroundColor: t.surfaceAlt, alignItems: 'center', justifyContent: 'center' }]}>
-                <Icon name="wine-outline" size={22} color={t.textMuted} />
-              </View>
-            )}
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[type.bodyStrong, { color: t.text }]} numberOfLines={1}>{item.name}</Text>
-              <Text style={[type.caption, { color: t.textMuted, marginTop: 2 }]} numberOfLines={1}>
-                {[item.distillery, item.vintage].filter(Boolean).join(' · ') || item.drink_type}
-              </Text>
-              {!!item.notes && (
-                <Text style={[type.caption, { color: t.textSecondary, marginTop: 5 }]} numberOfLines={2}>{item.notes}</Text>
-              )}
-            </View>
-            {item.rating > 0 && (
-              <View style={[styles.rating, { backgroundColor: t.accentSoft }]}>
-                <Text style={[type.label, { color: t.accentText }]}>{item.rating}</Text>
-              </View>
-            )}
-          </View>
-        </FadeIn>
-      );
-    }
-
-    return (
-      <FadeIn index={index}>
-        <View style={[styles.badge, { backgroundColor: t.surface, borderColor: t.border }]}>
-          <View style={[styles.badgeIcon, { backgroundColor: t.accentSoft }]}>
-            <Text style={{ fontSize: 22 }}>{item.icon || '🏅'}</Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[type.bodyStrong, { color: t.text }]}>{item.name}</Text>
-            <Text style={[type.caption, { color: t.textMuted, marginTop: 2 }]}>{item.desc}</Text>
-          </View>
-        </View>
-      </FadeIn>
-    );
-  };
-
-  const emptyFor = {
-    pours: { icon: 'wine-outline', title: isMe ? 'No pours yet' : 'Nothing poured yet', body: isMe ? 'Share what’s in your glass to start your feed.' : 'This member hasn’t shared a pour yet.' },
-    bar: { icon: 'library-outline', title: 'The shelf is empty', body: isMe ? 'Bottles you add to your collection show up here.' : 'Nothing on this shelf yet.' },
-    badges: { icon: 'ribbon-outline', title: 'No badges yet', body: 'Badges arrive as you post, cheer and connect.' },
-  }[tab];
 
   return (
     <Screen edges={['top']}>
-      <FlatList
-        data={data}
-        keyExtractor={(item, i) => String(item.id ?? `${tab}-${i}`)}
-        ListHeaderComponent={header}
-        renderItem={renderItem}
+      {/* ProfilePillars renders the six-pillar tab strip and every tab body —
+          Stories, Places, Collection, Trips, Ratings, Tagged — each with its
+          own fetch, loading, empty and error handling. The screen keeps the
+          identity header above it. */}
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
-        ListEmptyComponent={
-          (tab === 'bar' && bar === null) || (tab === 'badges' && badges === null) ? (
-            <ActivityIndicator color={t.accent} style={{ marginTop: 30 }} />
-          ) : (
-            <EmptyState
-              icon={emptyFor.icon}
-              title={emptyFor.title}
-              body={emptyFor.body}
-              actionLabel={isMe && tab === 'pours' ? 'Share a pour' : undefined}
-              onAction={() => navigation.navigate('Compose')}
-            />
-          )
-        }
-      />
+      >
+        {header}
+        <ProfilePillars
+          ref={pillarsRef}
+          userId={targetId}
+          isMe={isMe}
+          posts={profile?.posts}
+          memberName={profile?.name}
+          navigation={navigation}
+          onOpenPlace={(place) => navigation.navigate('PlaceProfile', { id: place?.id ?? place, place })}
+        />
+      </ScrollView>
     </Screen>
   );
 }

@@ -12,6 +12,7 @@ import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { ToastProvider } from './src/components/ui/Toast';
 import { ReportSheetProvider } from './src/lib/reportSheet';
+import CreateSheetProvider from './src/components/composer/CreateSheet';
 import RootNavigator from './src/navigation/RootNavigator';
 
 function Shell() {
@@ -45,9 +46,11 @@ function Shell() {
       <StatusBar style={t.statusBar} />
       <ToastProvider>
         <ReportSheetProvider>
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
+          <CreateSheetProvider>
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+          </CreateSheetProvider>
         </ReportSheetProvider>
       </ToastProvider>
     </NavigationContainer>

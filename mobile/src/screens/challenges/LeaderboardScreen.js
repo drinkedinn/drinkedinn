@@ -73,7 +73,7 @@ export default function LeaderboardScreen({ navigation, route }) {
   const openProfile = useCallback(
     (entry) => {
       if (!entry?.id) return;
-      if (entry.id === user?.id) navigation.navigate('Account');
+      if (entry.id === user?.id) navigation.navigate('Profile');
       else navigation.navigate('User', { userId: entry.id });
     },
     [navigation, user?.id]

@@ -214,7 +214,7 @@ export default function EventDetailScreen({ navigation, route }) {
 
   const openHost = useCallback(() => {
     if (!event) return;
-    if (isHost) navigation.navigate('Account');
+    if (isHost) navigation.navigate('Profile');
     else navigation.navigate('User', { userId: event.user_id });
   }, [event, isHost, navigation]);
 

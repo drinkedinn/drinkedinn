@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 const UPDATED = 'February 2026';
 const CONTACT = 'hello@drinkedinn.app';
+// Designated child-safety contact. Google Play requires a published point of
+// contact for CSAE matters, distinct from general support, and the same address
+// must be given in the Play Console child-safety declaration.
+const CHILD_SAFETY_CONTACT = 'childsafety@drinkedinn.com';
 const PRIVACY_CONTACT = 'privacy@drinkedinn.app';
 
 const S = {
@@ -43,6 +47,7 @@ function Shell({ kind, eyebrow, title, children }) {
     { to: '/privacy', label: 'Privacy' },
     { to: '/terms', label: 'Terms' },
     { to: '/guidelines', label: 'Guidelines' },
+    { to: '/child-safety', label: 'Child Safety' },
   ];
 
   return (
@@ -301,6 +306,82 @@ export function Guidelines() {
         Use the options menu on any post to report it. We review reports and may remove content or
         suspend accounts. Serious safety concerns can go straight to{' '}
         <a href={`mailto:${CONTACT}`} style={S.a}>{CONTACT}</a>.
+      </p>
+    </Shell>
+  );
+}
+
+// Child Safety Standards.
+//
+// Google Play requires every Social app to publish standards against child
+// sexual abuse and exploitation, an in-app reporting path, a stated process for
+// handling CSAM, and a designated point of contact — and the requirement
+// applies whether or not the app admits minors. DrinkedInn is 18+ only, so this
+// page exists to state the standard, not because children are expected here.
+//
+// Routed OUTSIDE the age gate on purpose: a reviewer, a parent or a regulator
+// must be able to read it without creating an account.
+export function ChildSafety() {
+  return (
+    <Shell kind="child-safety" eyebrow="Safety" title="Child Safety Standards">
+      <div style={S.callout}>
+        <p style={S.calloutT}>DrinkedInn has zero tolerance for child sexual abuse and exploitation.</p>
+        <p style={S.calloutP}>
+          We remove it, we ban the accounts behind it, and we report it to the authorities and to
+          NCMEC where the law requires. There is no appeal path for this category.
+        </p>
+      </div>
+
+      <h2 style={S.h2}>The standard</h2>
+      <p style={S.p}>
+        DrinkedInn is an adults-only service. You must be 18 or older, and of legal drinking age
+        where you live, to hold an account. The following are prohibited without exception:
+      </p>
+      <ul style={S.ul}>
+        <li style={S.li}>Child sexual abuse material (CSAM) in any form, real or generated.</li>
+        <li style={S.li}>Sexualised depictions of minors, including drawings, animation and AI output.</li>
+        <li style={S.li}>Grooming, solicitation, or any attempt to contact a minor for sexual purposes.</li>
+        <li style={S.li}>Sextortion, or trading in material depicting minors.</li>
+        <li style={S.li}>Content that normalises, advertises or seeks any of the above.</li>
+      </ul>
+
+      <h2 style={S.h2}>How to report it</h2>
+      <p style={S.p}>
+        Every post, story, comment, profile, message, group and event in DrinkedInn carries a report
+        option in its <strong>•••</strong> menu, and child safety is a category in that list. Reports in
+        this category are never deduplicated, never rate-limited and never auto-closed — each one
+        reaches a human.
+      </p>
+      <p style={S.p}>
+        You can also write directly to{' '}
+        <a href={`mailto:${CHILD_SAFETY_CONTACT}`} style={S.a}>{CHILD_SAFETY_CONTACT}</a>, which is our
+        designated child-safety contact. You do not need a DrinkedInn account to use it.
+      </p>
+
+      <h2 style={S.h2}>What we do when we receive one</h2>
+      <ul style={S.ul}>
+        <li style={S.li}>The content is removed and preserved as evidence rather than deleted outright.</li>
+        <li style={S.li}>The account is suspended immediately, before any review of intent.</li>
+        <li style={S.li}>We report to NCMEC and to local authorities where the law requires it.</li>
+        <li style={S.li}>We honour valid legal process from law enforcement investigating a report.</li>
+      </ul>
+
+      <h2 style={S.h2}>If a child is in immediate danger</h2>
+      <p style={S.p}>
+        Contact your local emergency services first — not us. In the United States you can also
+        reach the NCMEC CyberTipline at{' '}
+        <a href="https://report.cybertip.org/" target="_blank" rel="noopener noreferrer" style={S.a}>report.cybertip.org</a>.
+        In the United Kingdom, the IWF at{' '}
+        <a href="https://report.iwf.org.uk/" target="_blank" rel="noopener noreferrer" style={S.a}>report.iwf.org.uk</a>.
+      </p>
+
+      <h2 style={S.h2}>Keeping minors off the service</h2>
+      <p style={S.p}>
+        Accounts are age-gated at sign-up and again per jurisdiction — the minimum age follows the
+        local legal drinking age, which is 21 in the United States and 25 in some markets, not a flat
+        18. Where a market requires stronger assurance than self-declaration, we use a third-party
+        provider that returns only a pass or fail and an age band. We never receive, transmit or
+        store an identity document. An account we believe belongs to a minor is removed.
       </p>
     </Shell>
   );

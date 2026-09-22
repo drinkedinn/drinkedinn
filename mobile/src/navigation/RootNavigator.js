@@ -10,7 +10,6 @@ import api from '../api';
 import AuthScreen from '../screens/AuthScreen';
 import LockScreen from '../screens/LockScreen';
 import FeedScreen from '../screens/FeedScreen';
-import ExploreScreen from '../screens/ExploreScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CreatePostScreen from '../screens/CreatePostScreen';
@@ -49,6 +48,18 @@ import TripsScreen from '../screens/feedmodes/TripsScreen';
 import CheeredScreen from '../screens/feedmodes/CheeredScreen';
 import HashtagScreen from '../screens/feedmodes/HashtagScreen';
 
+// ── Phase 1 modules: Places pillar, Memories, Explore, Profile, Safety ──────
+import PlacesScreen from '../screens/places/PlacesScreen';
+import PlaceProfileScreen from '../screens/places/PlaceProfileScreen';
+import AddPlaceScreen from '../screens/places/AddPlaceScreen';
+import MemoriesScreen from '../screens/memories/MemoriesScreen';
+import MemoryDetailScreen from '../screens/memories/MemoryDetailScreen';
+import ExploreScreen from '../screens/explore/ExploreScreen';
+import OnboardingV2Screen from '../screens/onboarding-v2/OnboardingV2Screen';
+import SafetyCenterScreen from '../screens/safety/SafetyCenterScreen';
+import ChildSafetyReportScreen from '../screens/safety/ChildSafetyReportScreen';
+import BlockedAccountsScreen from '../screens/safety/BlockedAccountsScreen';
+
 import TabBar from './TabBar';
 
 const Stack = createNativeStackNavigator();
@@ -76,9 +87,9 @@ function Tabs() {
       tabBar={(props) => <TabBar {...props} unreadCount={unread} />}
     >
       <Tab.Screen name="Home" component={FeedScreen} />
-      <Tab.Screen name="Discover" component={ExploreScreen} />
-      <Tab.Screen name="Activity" component={NotificationsScreen} />
-      <Tab.Screen name="Account" component={AccountScreen} />
+      <Tab.Screen name="Explore" component={ExploreScreen} />
+      <Tab.Screen name="Places" component={PlacesScreen} />
+      <Tab.Screen name="Profile" component={AccountScreen} />
     </Tab.Navigator>
   );
 }
@@ -104,7 +115,10 @@ export default function RootNavigator() {
       ) : !user.onboarded ? (
         // First-run gate. Once /onboarding/complete flips the flag and refresh()
         // repulls the user, this branch stops matching and Tabs mounts.
-        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+        // v2 is the shortened, Play-compliant flow: broad interests (no
+        // alcohol-first grid), explicit Terms + Guidelines acceptance, and no
+        // contacts access.
+        <Stack.Screen name="Onboarding" component={OnboardingV2Screen} />
       ) : (
         <>
           <Stack.Screen name="Tabs" component={Tabs} />
@@ -140,12 +154,26 @@ export default function RootNavigator() {
           <Stack.Screen name="Cheered" component={CheeredScreen} />
           <Stack.Screen name="Hashtag" component={HashtagScreen} />
 
+          {/* Phase 1 — Places pillar */}
+          <Stack.Screen name="PlaceProfile" component={PlaceProfileScreen} />
+          {/* Phase 1 — Memories */}
+          <Stack.Screen name="Memories" component={MemoriesScreen} />
+          <Stack.Screen name="MemoryDetail" component={MemoryDetailScreen} />
+          {/* Phase 1 — Safety Center (Play UGC + child-safety requirement) */}
+          <Stack.Screen name="SafetyCenter" component={SafetyCenterScreen} />
+          <Stack.Screen name="ChildSafetyReport" component={ChildSafetyReportScreen} />
+          <Stack.Screen name="BlockedAccounts" component={BlockedAccountsScreen} />
+          {/* Notifications lost its tab to Places; still reachable from the
+              Home header bell and from notification taps. */}
+          <Stack.Screen name="Activity" component={NotificationsScreen} />
+
           {/* Feature modules — modals */}
           <Stack.Screen name="CreateStory" component={CreateStoryScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="AddRating" component={AddRatingScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="AddBottle" component={AddBottleScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
           <Stack.Screen name="CreateEvent" component={CreateEventScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="AddPlace" component={AddPlaceScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         </>
       )}
     </Stack.Navigator>

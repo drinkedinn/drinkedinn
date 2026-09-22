@@ -94,7 +94,7 @@ export default function ExploreScreen({ navigation }) {
   }, [loadResting]);
 
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Account') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
   const openPost = (post) => navigation.navigate('PostDetail', { post });
 
   const isSearch = !!q.trim();

@@ -19,6 +19,7 @@ import StoryRow from '../components/home/StoryRow';
 import StoriesRail from '../components/stories/StoriesRail';
 import MessagesHeaderButton from '../components/messages/MessagesHeaderButton';
 import PourOfTheDay from '../components/feedmodes/PourOfTheDay';
+import MemoriesRail from '../components/memories/MemoriesRail';
 import Segmented from '../components/home/Segmented';
 import FeaturedCard from '../components/home/FeaturedCard';
 
@@ -138,7 +139,7 @@ export default function FeedScreen({ navigation }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Account') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
 
   return (
     <Screen>
@@ -156,11 +157,14 @@ export default function FeedScreen({ navigation }) {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <Bounce onPress={() => navigation.navigate('Discover')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Search">
+          <Bounce onPress={() => navigation.navigate('Explore')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Search">
             <Icon name="search-outline" size={19} color={t.text} />
           </Bounce>
+          <Bounce onPress={() => navigation.navigate('Activity')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Activity">
+            <Icon name="notifications-outline" size={19} color={t.text} />
+          </Bounce>
           <MessagesHeaderButton />
-          <Bounce onPress={() => navigation.navigate('Account')} haptic="light" accessibilityLabel="Your account">
+          <Bounce onPress={() => navigation.navigate('Profile')} haptic="light" accessibilityLabel="Your account">
             <Avatar uri={user?.avatar} name={user?.name} size={34} />
           </Bounce>
         </View>
@@ -182,6 +186,8 @@ export default function FeedScreen({ navigation }) {
           ListHeaderComponent={
             <View>
               <StoriesRail />
+              {/* Renders nothing until there are memories worth showing. */}
+              <MemoriesRail />
               <StoryRow
                 me={user}
                 people={people}
@@ -223,7 +229,7 @@ export default function FeedScreen({ navigation }) {
                 title="Your round is quiet"
                 body="Connect with a few people and their pours will land here."
                 actionLabel="Find people"
-                onAction={() => navigation.navigate('Discover')}
+                onAction={() => navigation.navigate('Explore')}
               />
             ) : (
               <EmptyState

@@ -198,7 +198,7 @@ export default function InviteScreen({ navigation }) {
   const openProfile = useCallback(
     (leader) => {
       if (!leader?.id) return;
-      if (leader.id === user?.id) navigation.navigate('Account');
+      if (leader.id === user?.id) navigation.navigate('Profile');
       else navigation.navigate('User', { userId: leader.id });
     },
     [navigation, user?.id]

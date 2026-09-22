@@ -99,7 +99,8 @@ export default function AccountScreen({ navigation }) {
         <SettingsGroup title="Your inn">
           <SettingsRow icon="library-outline" label="Your taste" onPress={() => navigation.navigate('Taste')} />
           <SettingsRow icon="map-outline" label="Places" onPress={() => navigation.navigate('Trips')} />
-          <SettingsRow icon="heart-outline" label="Cheered" onPress={() => navigation.navigate('Cheered')} last />
+          <SettingsRow icon="heart-outline" label="Cheered" onPress={() => navigation.navigate('Cheered')} />
+          <SettingsRow icon="time-outline" label="Memories" onPress={() => navigation.navigate('Memories')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Community">
@@ -127,6 +128,14 @@ export default function AccountScreen({ navigation }) {
           />
           <SettingsRow icon="person-circle-outline" label="Age verification" onPress={() => navigation.navigate('AgeVerification')} />
           <SettingsRow icon="shield-checkmark-outline" label="Privacy & data" onPress={() => navigation.navigate('Privacy')} last />
+        </SettingsGroup>
+
+        <SettingsGroup
+          title="Safety"
+          footer="Reporting and blocking work on every post, story, comment, profile, message, group and event."
+        >
+          <SettingsRow icon="shield-checkmark-outline" label="Safety Center" onPress={() => navigation.navigate('SafetyCenter')} />
+          <SettingsRow icon="person-remove-outline" label="Blocked accounts" onPress={() => navigation.navigate('BlockedAccounts')} last />
         </SettingsGroup>
 
         <SettingsGroup title="Support">

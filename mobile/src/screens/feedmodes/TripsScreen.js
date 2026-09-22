@@ -103,7 +103,7 @@ export default function TripsScreen({ navigation }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Account') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
 
   const totalPlaces = sections.length;
   const totalMoments = posts.length;

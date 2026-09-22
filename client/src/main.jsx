@@ -5,7 +5,7 @@ import App from './App.jsx';
 import AdminApp from './admin/AdminApp.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import AgeGate from './components/AgeGate.jsx';
-import { PrivacyPolicy, Terms, Guidelines } from './components/LegalPage.jsx';
+import { PrivacyPolicy, Terms, Guidelines, ChildSafety } from './components/LegalPage.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import './index.css';
@@ -21,6 +21,7 @@ function Root() {
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/terms" element={<Terms />} />
             <Route path="/guidelines" element={<Guidelines />} />
+            <Route path="/child-safety" element={<ChildSafety />} />
 
             <Route
               path="/*"

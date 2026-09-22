@@ -212,7 +212,7 @@ export default function GroupDetailScreen({ navigation, route }) {
   const openProfile = useCallback(
     (id) => {
       if (!id) return;
-      if (id === user?.id) navigation.navigate('Account');
+      if (id === user?.id) navigation.navigate('Profile');
       else navigation.navigate('User', { userId: id });
     },
     [navigation, user?.id]

@@ -176,7 +176,7 @@ export default function PostDetailScreen({ navigation, route }) {
                     post={post}
                     onOpen={() => {}}
                     onProfile={(uid) =>
-                      uid === user?.id ? navigation.navigate('Account') : navigation.navigate('User', { userId: uid })
+                      uid === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: uid })
                     }
                   />
                 )}
@@ -194,7 +194,7 @@ export default function PostDetailScreen({ navigation, route }) {
                     scaleTo={0.97}
                     onPress={() =>
                       item.user_id === user?.id
-                        ? navigation.navigate('Account')
+                        ? navigation.navigate('Profile')
                         : item.user_id && navigation.navigate('User', { userId: item.user_id })
                     }
                   >
