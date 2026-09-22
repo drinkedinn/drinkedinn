@@ -180,7 +180,12 @@ export default function ProfileScreen({ navigation, route }) {
 
         <View style={{ flexDirection: 'row', gap: 10, marginTop: 16, width: '100%' }}>
           {isMe ? (
-            <Button label="Edit profile" icon="create-outline" variant="secondary" full onPress={() => navigation.navigate('EditProfile')} />
+            <>
+              <View style={{ flex: 1 }}>
+                <Button label="Edit profile" icon="create-outline" variant="secondary" full onPress={() => navigation.navigate('EditProfile')} />
+              </View>
+              <Button label="Taste" icon="library-outline" variant="subtle" onPress={() => navigation.navigate('Taste')} />
+            </>
           ) : (
             <>
               <View style={{ flex: 1 }}>
@@ -192,7 +197,7 @@ export default function ProfileScreen({ navigation, route }) {
                   onPress={toggleConnect}
                 />
               </View>
-              <Button label="Message" icon="chatbubble-outline" variant="subtle" onPress={() => toast?.show('Messages are coming soon.', 'info')} />
+              <Button label="Message" icon="chatbubble-outline" variant="subtle" onPress={() => navigation.navigate('Thread', { userId: targetId, name: profile?.name, avatar: profile?.avatar })} />
             </>
           )}
         </View>

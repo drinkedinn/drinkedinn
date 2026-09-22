@@ -15,6 +15,8 @@ import { Screen, Icon, Bounce, EmptyState, FadeIn, useToast } from '../component
 import { Shimmer } from '../components/ui/Skeleton';
 import PersonRow from '../components/discover/PersonRow';
 import PostCard from '../components/PostCard';
+import TonightRail from '../components/events/TonightRail';
+import ChallengesRail from '../components/challenges/ChallengesRail';
 import Segmented from '../components/home/Segmented';
 
 const TABS = [
@@ -161,7 +163,7 @@ export default function ExploreScreen({ navigation }) {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
                     renderItem={({ item }) => (
-                      <Bounce onPress={() => setQ(item.tag.replace(/^#/, ''))} haptic="light" scaleTo={0.94}>
+                      <Bounce onPress={() => navigation.navigate('Hashtag', { tag: item.tag })} haptic="light" scaleTo={0.94}>
                         <View style={[styles.tag, { backgroundColor: t.surface, borderColor: t.border }]}>
                           <Text style={[type.label, { color: t.accent }]}>{item.tag}</Text>
                           <Text style={[type.caption, { color: t.textMuted }]}>{item.count}</Text>
@@ -171,6 +173,59 @@ export default function ExploreScreen({ navigation }) {
                   />
                 </View>
               )}
+              {/* Ask the Innkeeper — full-width discovery card */}
+              <Bounce
+                onPress={() => navigation.navigate('AskInnkeeper')}
+                haptic="light"
+                scaleTo={0.98}
+                style={{ marginHorizontal: 16, marginBottom: 22 }}
+                accessibilityLabel="Ask the Innkeeper"
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: t.surface, borderColor: t.border, borderWidth: 1, borderRadius: 16, padding: 16 }}>
+                  <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: t.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="sparkles-outline" size={22} color={t.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[type.body, { color: t.text, fontWeight: '700' }]}>Ask the Innkeeper</Text>
+                    <Text style={[type.caption, { color: t.textMuted, marginTop: 2 }]}>Recommendations from your own taste.</Text>
+                  </View>
+                  <Icon name="chevron-forward" size={18} color={t.textMuted} />
+                </View>
+              </Bounce>
+
+              {/* Tonight & upcoming — events rail (self-fetches) */}
+              <TonightRail onSeeAll={() => navigation.navigate('Events')} />
+
+              {/* Challenges rail (self-fetches) */}
+              <ChallengesRail
+                onOpen={(c) => navigation.navigate('ChallengeLeaderboard', { id: c.id, title: c.title })}
+                onSeeAll={() => navigation.navigate('Challenges')}
+              />
+
+              {/* Groups + Places + Cheered — small two-column shortcut grid */}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12, marginBottom: 22, gap: 8 }}>
+                {[
+                  { label: 'Groups',  icon: 'people-outline', to: 'Groups' },
+                  { label: 'Places',  icon: 'map-outline',    to: 'Trips' },
+                  { label: 'Cheered', icon: 'heart-outline',  to: 'Cheered' },
+                  { label: 'Events',  icon: 'calendar-outline', to: 'Events' },
+                ].map((it) => (
+                  <Bounce
+                    key={it.to}
+                    onPress={() => navigation.navigate(it.to)}
+                    haptic="light"
+                    scaleTo={0.96}
+                    style={{ flexBasis: '48%', flexGrow: 1 }}
+                    accessibilityLabel={it.label}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: t.surface, borderColor: t.border, borderWidth: 1, borderRadius: 14, padding: 12 }}>
+                      <Icon name={it.icon} size={18} color={t.accent} />
+                      <Text style={[type.body, { color: t.text, fontWeight: '600' }]}>{it.label}</Text>
+                    </View>
+                  </Bounce>
+                ))}
+              </View>
+
               <Text style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginLeft: 16, marginBottom: 8 }]}>
                 People to pour with
               </Text>

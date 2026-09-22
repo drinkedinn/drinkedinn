@@ -25,6 +25,30 @@ import PrivacyScreen from '../screens/account/PrivacyScreen';
 import AgeVerificationScreen from '../screens/account/AgeVerificationScreen';
 import { HelpScreen, ResponsibleScreen, LegalScreen } from '../screens/account/InfoScreens';
 
+
+// ── feature modules built by the mobile-complete workflow ───────────────────
+import ConversationsScreen from '../screens/messages/ConversationsScreen';
+import ThreadScreen from '../screens/messages/ThreadScreen';
+import StoryViewerScreen from '../screens/stories/StoryViewerScreen';
+import CreateStoryScreen from '../screens/stories/CreateStoryScreen';
+import TasteScreen from '../screens/taste/TasteScreen';
+import AddRatingScreen from '../screens/taste/AddRatingScreen';
+import AddBottleScreen from '../screens/taste/AddBottleScreen';
+import GroupsScreen from '../screens/groups/GroupsScreen';
+import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
+import CreateGroupScreen from '../screens/groups/CreateGroupScreen';
+import EventsScreen from '../screens/events/EventsScreen';
+import EventDetailScreen from '../screens/events/EventDetailScreen';
+import CreateEventScreen from '../screens/events/CreateEventScreen';
+import ChallengesScreen from '../screens/challenges/ChallengesScreen';
+import ChallengeLeaderboardScreen from '../screens/challenges/LeaderboardScreen';
+import SommelierScreen from '../screens/sommelier/SommelierScreen';
+import InviteScreen from '../screens/referrals/InviteScreen';
+import OnboardingScreen from '../screens/onboarding/OnboardingScreen';
+import TripsScreen from '../screens/feedmodes/TripsScreen';
+import CheeredScreen from '../screens/feedmodes/CheeredScreen';
+import HashtagScreen from '../screens/feedmodes/HashtagScreen';
+
 import TabBar from './TabBar';
 
 const Stack = createNativeStackNavigator();
@@ -77,6 +101,10 @@ export default function RootNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: t.bg } }}>
       {!user ? (
         <Stack.Screen name="Auth" component={AuthScreen} />
+      ) : !user.onboarded ? (
+        // First-run gate. Once /onboarding/complete flips the flag and refresh()
+        // repulls the user, this branch stops matching and Tabs mounts.
+        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       ) : (
         <>
           <Stack.Screen name="Tabs" component={Tabs} />
@@ -94,6 +122,30 @@ export default function RootNavigator() {
           <Stack.Screen name="Help" component={HelpScreen} />
           <Stack.Screen name="Responsible" component={ResponsibleScreen} />
           <Stack.Screen name="Legal" component={LegalScreen} />
+
+          {/* Feature modules — push screens */}
+          <Stack.Screen name="Conversations" component={ConversationsScreen} />
+          <Stack.Screen name="Thread" component={ThreadScreen} />
+          <Stack.Screen name="StoryViewer" component={StoryViewerScreen} options={{ animation: 'fade', contentStyle: { backgroundColor: '#000' } }} />
+          <Stack.Screen name="Taste" component={TasteScreen} />
+          <Stack.Screen name="Groups" component={GroupsScreen} />
+          <Stack.Screen name="GroupDetail" component={GroupDetailScreen} />
+          <Stack.Screen name="Events" component={EventsScreen} />
+          <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+          <Stack.Screen name="Challenges" component={ChallengesScreen} />
+          <Stack.Screen name="ChallengeLeaderboard" component={ChallengeLeaderboardScreen} />
+          <Stack.Screen name="AskInnkeeper" component={SommelierScreen} />
+          <Stack.Screen name="Invite" component={InviteScreen} />
+          <Stack.Screen name="Trips" component={TripsScreen} />
+          <Stack.Screen name="Cheered" component={CheeredScreen} />
+          <Stack.Screen name="Hashtag" component={HashtagScreen} />
+
+          {/* Feature modules — modals */}
+          <Stack.Screen name="CreateStory" component={CreateStoryScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="AddRating" component={AddRatingScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="AddBottle" component={AddBottleScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="CreateGroup" component={CreateGroupScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="CreateEvent" component={CreateEventScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
         </>
       )}
     </Stack.Navigator>

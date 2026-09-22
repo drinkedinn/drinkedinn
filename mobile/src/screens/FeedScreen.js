@@ -16,6 +16,9 @@ import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
 import usePostActions from '../hooks/usePostActions';
 import StoryRow from '../components/home/StoryRow';
+import StoriesRail from '../components/stories/StoriesRail';
+import MessagesHeaderButton from '../components/messages/MessagesHeaderButton';
+import PourOfTheDay from '../components/feedmodes/PourOfTheDay';
 import Segmented from '../components/home/Segmented';
 import FeaturedCard from '../components/home/FeaturedCard';
 
@@ -156,6 +159,7 @@ export default function FeedScreen({ navigation }) {
           <Bounce onPress={() => navigation.navigate('Discover')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Search">
             <Icon name="search-outline" size={19} color={t.text} />
           </Bounce>
+          <MessagesHeaderButton />
           <Bounce onPress={() => navigation.navigate('Account')} haptic="light" accessibilityLabel="Your account">
             <Avatar uri={user?.avatar} name={user?.name} size={34} />
           </Bounce>
@@ -177,6 +181,7 @@ export default function FeedScreen({ navigation }) {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <View>
+              <StoriesRail />
               <StoryRow
                 me={user}
                 people={people}
@@ -186,7 +191,7 @@ export default function FeedScreen({ navigation }) {
               <View style={{ marginBottom: 16 }}>
                 <Segmented options={TABS} value={tab} onChange={(k) => { setTab(k); setVisibleCount(PAGE); }} />
               </View>
-              {potd && <FeaturedCard post={potd} onPress={openPost} />}
+              <PourOfTheDay onOpen={openPost} />
             </View>
           }
           renderItem={({ item, index }) => (

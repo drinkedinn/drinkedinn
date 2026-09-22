@@ -96,10 +96,17 @@ export default function AccountScreen({ navigation }) {
           </View>
         )}
 
-        <SettingsGroup title="Your bar">
-          <SettingsRow icon="wine-outline" label="My Bar" onPress={() => navigation.navigate('MyBar')} />
-          <SettingsRow icon="bookmark-outline" label="Saved pours" onPress={() => navigation.navigate('Saved')} />
-          <SettingsRow icon="ribbon-outline" label="Badges" onPress={() => navigation.navigate('Badges')} />
+        <SettingsGroup title="Your inn">
+          <SettingsRow icon="library-outline" label="Your taste" onPress={() => navigation.navigate('Taste')} />
+          <SettingsRow icon="map-outline" label="Places" onPress={() => navigation.navigate('Trips')} />
+          <SettingsRow icon="heart-outline" label="Cheered" onPress={() => navigation.navigate('Cheered')} last />
+        </SettingsGroup>
+
+        <SettingsGroup title="Community">
+          <SettingsRow icon="people-outline" label="Groups" onPress={() => navigation.navigate('Groups')} />
+          <SettingsRow icon="calendar-outline" label="Events" onPress={() => navigation.navigate('Events')} />
+          <SettingsRow icon="trophy-outline" label="Challenges" onPress={() => navigation.navigate('Challenges')} />
+          <SettingsRow icon="sparkles-outline" label="Ask the Innkeeper" onPress={() => navigation.navigate('AskInnkeeper')} />
           <SettingsRow icon="gift-outline" label="Invite friends" onPress={() => navigation.navigate('Invite')} last />
         </SettingsGroup>
 

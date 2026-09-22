@@ -11,6 +11,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider } from './src/context/AuthContext';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
 import { ToastProvider } from './src/components/ui/Toast';
+import { ReportSheetProvider } from './src/lib/reportSheet';
 import RootNavigator from './src/navigation/RootNavigator';
 
 function Shell() {
@@ -43,9 +44,11 @@ function Shell() {
     <NavigationContainer ref={navigationRef} theme={navTheme}>
       <StatusBar style={t.statusBar} />
       <ToastProvider>
-        <AuthProvider>
-          <RootNavigator />
-        </AuthProvider>
+        <ReportSheetProvider>
+          <AuthProvider>
+            <RootNavigator />
+          </AuthProvider>
+        </ReportSheetProvider>
       </ToastProvider>
     </NavigationContainer>
   );
