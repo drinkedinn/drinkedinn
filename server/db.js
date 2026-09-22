@@ -302,6 +302,50 @@ async function init() {
       digest_email INTEGER DEFAULT 1,
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
+
+    -- ── Places pillar ────────────────────────────────────────────────────
+    -- Canonical venues. A post's place_id points at one of these; multiple
+    -- posts about the same "Sky Lounge, Kampala" collapse into one profile.
+    CREATE TABLE IF NOT EXISTS places (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      name          TEXT NOT NULL,
+      category      TEXT DEFAULT '',
+      city          TEXT DEFAULT '',
+      country       TEXT DEFAULT '',
+      lat           REAL DEFAULT NULL,
+      lng           REAL DEFAULT NULL,
+      cover_url     TEXT DEFAULT '',
+      created_by    INTEGER,
+      created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_places_name ON places(name);
+    CREATE INDEX IF NOT EXISTS idx_places_city ON places(city);
+    CREATE INDEX IF NOT EXISTS idx_places_country ON places(country);
+
+    -- "Want to go" — one row per user/place pair (existence = saved).
+    CREATE TABLE IF NOT EXISTS saved_places (
+      user_id    INTEGER NOT NULL,
+      place_id   INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, place_id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (place_id) REFERENCES places(id)
+    );
+
+    -- Been-here history. Multiple rows per user/place allowed (revisits).
+    -- The country column is denormalised so the Trips grouping is a single scan.
+    CREATE TABLE IF NOT EXISTS place_visits (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      place_id   INTEGER NOT NULL,
+      country    TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (place_id) REFERENCES places(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_visits_user ON place_visits(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_visits_place ON place_visits(place_id);
   `);
 
   // Safe migrations for existing DBs
@@ -348,6 +392,13 @@ async function init() {
     // Users can refuse brand content outright — a personal setting the ad
     // delivery gate checks before anything commercial.
     `ALTER TABLE users ADD COLUMN brand_content_opt_out INTEGER NOT NULL DEFAULT 0`,
+    // Places pillar. Each post can anchor to a canonical place row. Nullable
+    // during transition — free-text posts.location keeps working.
+    `ALTER TABLE posts ADD COLUMN place_id INTEGER DEFAULT NULL`,
+    // Interests-first onboarding — comma-separated slugs drive suggestions and
+    // Explore's editorial sections when the account is too new for real signal.
+    `ALTER TABLE users ADD COLUMN interests TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN home_city TEXT DEFAULT ''`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}

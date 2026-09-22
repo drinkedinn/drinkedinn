@@ -158,6 +158,18 @@ function createApp({ isWorker = IS_WORKER } = {}) {
   app.use('/api/analytics', require('./routes/analytics'));
   app.use('/api/errors', require('./routes/errors'));
 
+  // Places pillar (canonical venues, save/visit toggles, trips summary)
+  app.use('/api/places', require('./routes/places'));
+  // Auto-grouped past posts as "Remember this night?" cards
+  app.use('/api/memories', require('./routes/memories'));
+
+  // /api/trips is an alias — same handler as /api/places/trips-summary.
+  // Keeps a clean public URL for the Trips tab in the mobile app.
+  app.get('/api/trips', require('./middleware/auth'), async (req, res, next) => {
+    req.url = '/trips-summary';
+    return require('./routes/places').handle(req, res, next);
+  });
+
   // Brand/ads routes are optional — they only exist once that model is present.
   try { app.use('/api/brands', require('./routes/brands')); } catch {}
   try { app.use('/api/ads', require('./routes/ads')); } catch {}

@@ -165,4 +165,74 @@ router.get('/:id', auth, async (req, res) => {
   }
 });
 
+// ── /users/:id/places — Places pillar on the profile ────────────────────────
+// Combined view: places the user has visited, dedup'd and most-recent first.
+router.get('/:id/places', auth, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT pl.*,
+              MAX(v.created_at) AS last_visit,
+              COUNT(v.id)       AS visit_count
+         FROM places pl
+         JOIN place_visits v ON v.place_id = pl.id
+        WHERE v.user_id = ?
+     GROUP BY pl.id
+     ORDER BY last_visit DESC
+        LIMIT 60`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/places]', err.message);
+    res.status(500).json({ error: 'Failed to fetch places' });
+  }
+});
+
+// ── /users/:id/trips — country groupings for the profile Trips pillar ───────
+router.get('/:id/trips', auth, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT country,
+              COUNT(DISTINCT place_id) AS place_count,
+              COUNT(id)                AS visit_count,
+              MAX(created_at)          AS last_visit
+         FROM place_visits
+        WHERE user_id = ? AND country != ''
+     GROUP BY country
+     ORDER BY last_visit DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/trips]', err.message);
+    res.status(500).json({ error: 'Failed to fetch trips' });
+  }
+});
+
+// ── /users/:id/tagged — posts the user was tagged in ────────────────────────
+// v1 heuristic: posts whose content contains "@<name>" of the target user.
+// Real tagging is a future extension; documented in notes so a proper tags
+// table can back this endpoint later without a client change.
+router.get('/:id/tagged', auth, async (req, res) => {
+  try {
+    const u = await db.get('SELECT name FROM users WHERE id = ?', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const handle = String(u.name || '').split(/\s+/)[0];
+    if (!handle) return res.json([]);
+    const rows = await db.all(
+      `SELECT p.*, u.name, u.title, u.avatar
+         FROM posts p
+         JOIN users u ON u.id = p.user_id
+        WHERE p.content LIKE ?
+     ORDER BY p.created_at DESC
+        LIMIT 40`,
+      [`%@${handle}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/tagged]', err.message);
+    res.status(500).json({ error: 'Failed to fetch tagged' });
+  }
+});
+
 module.exports = router;

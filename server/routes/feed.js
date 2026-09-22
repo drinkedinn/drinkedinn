@@ -16,6 +16,11 @@ router.get('/', auth, async (req, res) => {
   try {
     const page = Math.max(0, parseInt(req.query.page || '0', 10));
     const pageSize = 20;
+    // Home has two feeds — For You (the ranked candidate set) and Following
+    // (restricted to accounts the viewer follows). Same shape, different
+    // candidate pool. mode=for-you (default) preserves prior behaviour exactly.
+    const mode = String(req.query.mode || 'for-you').toLowerCase();
+    const followingOnly = mode === 'following';
 
     // Who do I follow? (affinity input) — target_id is the followed user.
     const followRows = await db.all(
@@ -28,6 +33,12 @@ router.get('/', auth, async (req, res) => {
     // whole recent window — the freshness weight in feedRank handles recency, so
     // no hard date cutoff (which would empty the feed on low-activity days).
     // created_at is ISO text → convert to ms epoch for the ranker.
+    // Optional filter: when Following is picked, keep only followed authors.
+    // Own posts still appear.
+    const followedIds = [...followingSet, req.user.id];
+    const inClause = followedIds.length ? `AND p.user_id IN (${followedIds.map(() => '?').join(',')})` : '';
+    const candArgs = followingOnly ? followedIds : [];
+
     const candidates = await db.all(
       `SELECT p.id,
               p.user_id AS author_id,
@@ -35,8 +46,10 @@ router.get('/', auth, async (req, res) => {
               (SELECT COUNT(*) FROM cheers   c  WHERE c.post_id = p.id)  AS cheers,
               (SELECT COUNT(*) FROM comments cm WHERE cm.post_id = p.id) AS comments
          FROM posts p
+        WHERE 1=1 ${followingOnly ? inClause : ''}
         ORDER BY p.created_at DESC
-        LIMIT 400`
+        LIMIT 400`,
+      candArgs
     );
 
     const ranked = rankPosts(candidates, followingSet);
@@ -53,6 +66,7 @@ router.get('/', auth, async (req, res) => {
 
     res.json({
       page,
+      mode: followingOnly ? 'following' : 'for-you',
       potd_post_id: potdId,
       post_ids: slice.map((p) => p.id),
     });

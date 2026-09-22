@@ -44,6 +44,13 @@ const OWNED = [
   ['device_tokens', ['user_id']],
   ['brand_members', ['user_id']],
   ['error_occurrences', ['user_id']],
+
+  // Places pillar — added Sep 2026. Both are wholly personal:
+  //   saved_places is the user's own want-to-go list.
+  //   place_visits is their been-here history.
+  // A blocked-user policy or a data-portability request must erase both.
+  ['saved_places', ['user_id']],
+  ['place_visits', ['user_id']],
 ];
 
 // Tables that reference a user and are DELIBERATELY not erased. Listed
