@@ -241,6 +241,7 @@ export default function ProfileScreen({ navigation, route }) {
           userId={targetId}
           isMe={isMe}
           posts={profile?.posts}
+          postsPending={!profile}
           memberName={profile?.name}
           navigation={navigation}
           onOpenPlace={(place) => navigation.navigate('PlaceProfile', { id: place?.id ?? place, place })}

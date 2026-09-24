@@ -12,11 +12,15 @@ router.get('/', auth, async (req, res) => {
   try {
     const users = await db.all(`
       SELECT id, name, title, avatar,
-        (SELECT COUNT(*) FROM connections WHERE user_id = id) as connections
+        (SELECT COUNT(*) FROM connections WHERE user_id = id) as connections,
+        -- Without this the client renders every result as "not connected", and
+        -- POST /users/:id/connect is a TOGGLE — so tapping Connect on someone
+        -- you already follow silently unfollows them.
+        (SELECT COUNT(*) FROM connections WHERE user_id = ? AND target_id = users.id) as isConnected
       FROM users WHERE (name LIKE ? OR title LIKE ?) AND id != ?
         AND ${excludeBlocked('id')}
       LIMIT 8
-    `, [q, q, req.user.id, req.user.id, req.user.id]);
+    `, [req.user.id, q, q, req.user.id, req.user.id, req.user.id]);
 
     const posts = await db.all(`
       SELECT p.*, u.name, u.title, u.avatar,

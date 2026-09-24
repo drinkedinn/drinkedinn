@@ -124,7 +124,11 @@ export default function useExploreData() {
       return listOf(res).slice().sort(byStoryCount).slice(0, PLACE_LIMIT);
     };
 
-    const [nextScope, nextNearby] = await Promise.all([resolveScope(), resolveNearby()]);
+    const [nextScope, nextNearby] = // Do NOT block first paint on these. The load-bearing /posts has already
+      // returned by here; a slow /places/visited used to keep the whole screen
+      // in skeleton. Each section hides itself while empty, so they can fill in
+      // late.
+      Promise.all([resolveScope(), resolveNearby()]).catch(() => {});
 
     if (!alive.current) return;
 

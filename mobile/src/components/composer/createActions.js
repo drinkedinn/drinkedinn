@@ -61,11 +61,12 @@ export function normalizeActions(actions) {
 }
 
 /** Convenience for callers that want a subset by key, in the canonical order. */
+// A filter that matches nothing must yield nothing. Returning the full menu
+// instead meant a composer asking for one specific action got all four.
 export function pickActions(keys) {
   if (!Array.isArray(keys) || !keys.length) return CREATE_ACTIONS;
   const wanted = new Set(keys);
-  const subset = CREATE_ACTIONS.filter((a) => wanted.has(a.key));
-  return subset.length ? subset : CREATE_ACTIONS;
+  return CREATE_ACTIONS.filter((a) => wanted.has(a.key));
 }
 
 export default CREATE_ACTIONS;

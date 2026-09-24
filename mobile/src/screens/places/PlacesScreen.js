@@ -156,10 +156,15 @@ export default function PlacesScreen({ navigation }) {
     (trip) => {
       if (!trip?.country) return;
       track('places_country_filter', { country: trip.country });
-      search.setCountry(trip.country);
+      // Drill into VISITS, not the places table. Trips is grouped by
+      // place_visits.country; GET /places?country= matches places.country, and
+      // those disagree for any place added without one — so the old path showed
+      // "Nothing matches <Country>" for a trip the user plainly has.
+      setTab('visited');
+      segments.load('visited', { country: trip.country });
       listRef.current?.scrollToOffset({ offset: 0, animated: true });
     },
-    [search]
+    [segments]
   );
 
   const changeTab = useCallback(
@@ -218,9 +223,13 @@ export default function PlacesScreen({ navigation }) {
   const data = searching ? search.results : active.items;
   const isTrips = !searching && tab === 'trips';
 
+  // 'idle' counts as loading: a segment that has not dispatched its first
+  // request yet is not empty, it is unstarted. Treating only 'loading' as
+  // loading painted the "nothing here" empty state for a frame on every cold
+  // segment. Likewise a search with no term yet has not returned "no results".
   const loading = searching
     ? search.loading && search.results.length === 0
-    : active.status === 'loading' && active.items.length === 0;
+    : (active.status === 'loading' || active.status === 'idle') && active.items.length === 0;
 
   const error = searching ? search.error : active.error;
 

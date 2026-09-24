@@ -199,9 +199,15 @@ router.get('/:id/places', auth, async (req, res) => {
     const rows = await db.all(
       `SELECT pl.*,
               MAX(v.created_at) AS last_visit,
-              COUNT(v.id)       AS visit_count
+              COUNT(v.id)       AS visit_count,
+              -- The place card's options menu can block the member who ADDED
+              -- the place. Without a name it labelled the dialog with the
+              -- venue's name, so the user blocked a person they were never
+              -- shown.
+              cu.name           AS created_by_name
          FROM places pl
          JOIN place_visits v ON v.place_id = pl.id
+    LEFT JOIN users cu ON cu.id = pl.created_by
         WHERE v.user_id = ?
      GROUP BY pl.id
      ORDER BY last_visit DESC

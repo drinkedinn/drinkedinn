@@ -173,7 +173,12 @@ export default function PlacesPillar({
                         targetType: 'place',
                         targetId: place.id,
                         authorId: place.created_by,
-                        authorName: place.name,
+                        // The MEMBER who added the place, not the venue. Passing
+                        // place.name made the block dialog read "Block Sky
+                        // Lounge?" — so the user blocked a person they were
+                        // never shown. Falls back to 'this member' when the
+                        // creator is unknown.
+                        authorName: place.created_by_name,
                         noun: 'place',
                       })
               }

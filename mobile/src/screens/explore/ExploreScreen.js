@@ -84,16 +84,24 @@ export default function ExploreScreen({ navigation }) {
     refresh, retry, removeAuthor, removePerson, refreshPeople,
   } = useExploreData();
 
-  const { results, searching, dropAuthor } = useExploreSearch(q);
+  const { results, searching, dropAuthor, dropPost } = useExploreSearch(q);
 
   // A delete only takes that one moment away. A block has to take the member
   // with it — /users/discover does not filter blocked accounts server-side, so
   // without removePerson they'd still be sitting in the people rail.
   const handleRemoved = useCallback((post, action) => {
     removeAuthor(post);
-    dropAuthor(post);
-    if (action === 'block' && post?.user_id != null) removePerson(post.user_id);
-  }, [removeAuthor, dropAuthor, removePerson]);
+    // dropAuthor removes EVERY post by that member and the member themselves.
+    // That is right for a block and wrong for a delete — deleting one of your
+    // own moments while a search was open stripped all of your posts from the
+    // results.
+    if (action === 'block') {
+      dropAuthor(post);
+      if (post?.user_id != null) removePerson(post.user_id);
+    } else {
+      dropPost(post);
+    }
+  }, [removeAuthor, dropAuthor, dropPost, removePerson]);
 
   // Blocking from a person row has to clear the rails and the search results
   // together.

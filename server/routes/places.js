@@ -170,14 +170,23 @@ router.get('/saved', auth, async (req, res) => {
 // GET /api/places/visited — distinct places, most-recent visit first.
 router.get('/visited', auth, async (req, res) => {
   try {
+    // Optional ?country= drills into one Trips row. It filters on
+    // place_visits.country — the same column Trips groups by — NOT on
+    // places.country. Those disagree whenever a place was added without a
+    // country (the visit still records one, from the viewer's edge header), so
+    // filtering the places table returned nothing for a trip that plainly
+    // exists.
+    const country = String(req.query.country || '').toUpperCase();
+    const byCountry = /^[A-Z]{2}$/.test(country);
     const rows = await db.all(
       `SELECT p.*, MAX(v.created_at) AS last_visit, COUNT(v.id) AS my_visits
          FROM places p
          JOIN place_visits v ON v.place_id = p.id
         WHERE v.user_id = ?
+          ${byCountry ? 'AND v.country = ?' : ''}
      GROUP BY p.id
      ORDER BY last_visit DESC`,
-      [req.user.id]
+      byCountry ? [req.user.id, country] : [req.user.id]
     );
     const decorated = await Promise.all(rows.map((r) => decorate(r, req.user.id)));
     res.json(decorated);

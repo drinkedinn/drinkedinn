@@ -315,6 +315,7 @@ function CreateSheetHost() {
       visible={visible}
       animationType="none"
       statusBarTranslucent
+      navigationBarTranslucent
       onRequestClose={() => dismiss(null)}
     >
       <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: t.scrim, opacity }]}>

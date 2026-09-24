@@ -35,6 +35,7 @@ const MemoriesRail = forwardRef(function MemoriesRail(
   const navigation = useNavigation();
 
   const [cards, setCards] = useState([]);
+  const everHadCards = useRef(false);
   const [loading, setLoading] = useState(true);
   const mounted = useRef(true);
   const trackedRef = useRef(false);
@@ -45,6 +46,7 @@ const MemoriesRail = forwardRef(function MemoriesRail(
       if (!mounted.current) return;
       const list = normalizeCards(res?.data);
       setCards(list);
+      if (((list) || []).length) everHadCards.current = true;
       if (list.length && !trackedRef.current) {
         trackedRef.current = true;
         track('memories_rail_shown', { count: list.length });
@@ -89,7 +91,13 @@ const MemoriesRail = forwardRef(function MemoriesRail(
   }, [navigation, onSeeAll]);
 
   // Nothing to look back on — disappear entirely.
-  if (!loading && cards.length === 0) return null;
+  //
+  // The `loading` clause meant a member with ZERO memories still got the
+  // "Looking back" heading and two skeleton cards on every Home mount, then
+  // watched ~250px vanish when the fetch came back empty. Stay hidden until we
+  // have actually seen cards at least once; after that, keep the skeletons on a
+  // refetch so the rail does not flash out for members who do have memories.
+  if (cards.length === 0 && !everHadCards.current) return null;
 
   return (
     <View style={[styles.wrap, style]}>

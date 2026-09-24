@@ -69,6 +69,15 @@ export default function useExploreSearch(query) {
   useEffect(() => () => clearTimeout(timer.current), []);
 
   /** After a block: drop that member and everything of theirs from results. */
+  // Remove ONE post from the results. A delete takes that moment away and
+  // nothing else — dropAuthor is for blocks, where the whole member goes.
+  const dropPost = useCallback((post) => {
+    if (post?.id == null) return;
+    setResults((r) => (
+      r ? { users: r.users, posts: r.posts.filter((p) => p.id !== post.id) } : r
+    ));
+  }, []);
+
   const dropAuthor = useCallback((post) => {
     const authorId = post?.user_id;
     if (authorId == null) return;
@@ -84,5 +93,5 @@ export default function useExploreSearch(query) {
     ));
   }, []);
 
-  return { results, searching, dropAuthor };
+  return { results, searching, dropAuthor, dropPost };
 }

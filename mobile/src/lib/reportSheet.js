@@ -65,7 +65,7 @@ function ReportSheetHost() {
   };
 
   return (
-    <Modal transparent visible={visible} onRequestClose={() => dismiss(null)} animationType="none" statusBarTranslucent>
+    <Modal transparent visible={visible} onRequestClose={() => dismiss(null)} animationType="none" statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.45)', opacity }]}>
         <Pressable style={{ flex: 1 }} onPress={() => dismiss(null)} accessibilityLabel="Dismiss" />
       </Animated.View>

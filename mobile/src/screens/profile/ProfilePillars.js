@@ -73,6 +73,7 @@ const ProfilePillars = forwardRef(function ProfilePillars(
     userId,
     isMe,
     posts: postsProp,
+    postsPending,
     memberName,
     initialTab = DEFAULT_TAB,
     onOpenPlace,
@@ -133,8 +134,14 @@ const ProfilePillars = forwardRef(function ProfilePillars(
      places  — Places renders it; Trips uses it to map place_id → country.
      trips   — Trips only, but kept here so refresh() reaches everything.     */
 
+  // `postsProp` is undefined on the first render because the parent is still
+  // fetching the profile — so this fired a second GET /users/:id that raced the
+  // parent's, and could surface a spurious error toast. `postsPending` lets the
+  // parent say "I am getting these, do not duplicate the call"; without it we
+  // still self-fetch, so the component works standalone.
   const needPosts =
-    !postsProp && (visited.has('stories') || visited.has('places') || visited.has('trips'));
+    !postsProp && !postsPending
+    && (visited.has('stories') || visited.has('places') || visited.has('trips'));
   const needPlaces = visited.has('places') || visited.has('trips');
   const needTrips = visited.has('trips');
 

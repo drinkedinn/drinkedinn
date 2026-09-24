@@ -18,7 +18,11 @@ export default function useProfileResource(
   fetcher,
   { enabled = true, token = 0, key = '', onError } = {},
 ) {
-  const [state, setState] = useState({ data: null, loading: false, error: null });
+  // `loading` starts true when the hook is enabled. Starting false meant every
+  // pillar rendered its full-screen empty state (with a CTA) for one frame
+  // before the fetch was even dispatched — a flash of "you have nothing" on a
+  // profile that does.
+  const [state, setState] = useState({ data: null, loading: !!enabled, error: null, settled: false });
 
   // Kept in refs so a new inline closure on every render never re-triggers the
   // effect (which would loop the request).
@@ -45,12 +49,12 @@ export default function useProfileResource(
       const data = await fetcherRef.current();
       if (!mounted.current || id !== reqId.current) return;
       hasData.current = data != null;
-      setState({ data: data ?? null, loading: false, error: null });
+      setState({ data: data ?? null, loading: false, error: null, settled: true });
     } catch (e) {
       if (!mounted.current || id !== reqId.current) return;
       const message = e?.safeMessage || 'Something went wrong.';
       // Keep whatever was already on screen; the inline retry is the way back.
-      setState((s) => ({ data: s.data, loading: false, error: message }));
+      setState((s) => ({ data: s.data, loading: false, error: message, settled: true }));
       try { onErrorRef.current?.(message); } catch {}
     }
   }, []);
@@ -68,7 +72,7 @@ export default function useProfileResource(
     const switchedMember = lastKey.current !== null && lastKey.current !== key;
     if (switchedMember) {
       hasData.current = false;
-      setState({ data: null, loading: true, error: null });
+      setState({ data: null, loading: true, error: null, settled: false });
     }
     const isRefresh = lastRun.current !== null && !switchedMember;
     lastRun.current = stamp;

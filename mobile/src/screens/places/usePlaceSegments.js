@@ -53,7 +53,12 @@ function pathFor(key, opts) {
     case 'saved':
       return '/places/saved';
     case 'visited':
-      return '/places/visited';
+      // Optional country drill-down from a Trips row. Filters visits, which is
+      // what Trips groups by — filtering places.country missed every place
+      // added without one.
+      return opts?.country
+        ? `/places/visited?country=${encodeURIComponent(opts.country)}`
+        : '/places/visited';
     case 'trips':
       return '/trips';
     default:
@@ -86,9 +91,9 @@ export default function usePlaceSegments() {
    * it never rejects, so callers do not need their own try/catch.
    */
   const load = useCallback(
-    async (key, { coords, refresh = false, silent = false } = {}) => {
+    async (key, { coords, country, refresh = false, silent = false } = {}) => {
       if (!SEGMENT_KEYS.includes(key)) return null;
-      const path = pathFor(key, { coords });
+      const path = pathFor(key, { coords, country });
       if (!path) {
         // Nearby without coordinates. Not an error to show — the screen renders
         // the location prompt instead. Returning `prev` untouched when there is

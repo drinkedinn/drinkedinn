@@ -8,6 +8,7 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { excludeBlocked } = require('../lib/blocking');
 
 const router = express.Router();
 
@@ -30,9 +31,12 @@ router.get('/suggestions', auth, async (req, res) => {
          FROM users u
         WHERE u.id != ?
           AND u.id NOT IN (SELECT target_id FROM connections WHERE user_id = ?)
+          -- Blocking someone from the suggestions list has to stick. Without
+          -- this, a pull-to-refresh brought the blocked account straight back.
+          AND ${excludeBlocked('u.id')}
         ORDER BY followers DESC, posts DESC
         LIMIT 60`,
-      [req.user.id, req.user.id]
+      [req.user.id, req.user.id, req.user.id, req.user.id]
     );
 
     const scored = rows.map((r) => {

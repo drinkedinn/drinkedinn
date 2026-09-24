@@ -270,8 +270,11 @@ export default function OnboardingV2Screen() {
 
   // Warm the list one step early so step 5 lands instantly.
   useEffect(() => {
-    if (hydrated && step >= 4 && people.suggestions === null) loadPeople();
-  }, [hydrated, step, people.suggestions, loadPeople]);
+    // Wait for the interests POST. Fetching at step 4 meant the server ranked
+    // suggestions against an empty interest set — the personalisation the step
+    // exists for never applied on a first run.
+    if (hydrated && step >= 4 && interestsSaved.current && people.suggestions === null) loadPeople();
+  }, [hydrated, step, people.suggestions, loadPeople, savingInterests]);
 
   /* ── step 6: push, then complete ────────────────────────────────────────── */
 
