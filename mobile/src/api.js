@@ -2,9 +2,9 @@
 // Hardened HTTP client for the DrinkedInn API.
 //
 // Security posture:
-//  - HTTPS only, pinned to the www host. The bare domain 307-redirects and
+//  - HTTPS only. A bare-domain 307 would drop the Authorization header, so
 //    browsers/clients drop the Authorization header across that hop, so every
-//    authenticated call must target www directly.
+//    every authenticated call targets the API origin directly.
 //  - Bearer token is read from the OS keystore per request, never held in a
 //    module-level variable that could leak into a crash report.
 //  - Redirects are not followed for authenticated calls (prevents a redirect
@@ -15,12 +15,27 @@
 import axios from 'axios';
 import secureStore from './lib/secureStore';
 
-export const ORIGIN = 'https://www.drinkedinn.com';
+// The API host.
+//
+// www.drinkedinn.com is STILL the old Vercel deployment: it answers /api/places
+// with text/html (the SPA fallback) and its /api/health has no `runtime` field,
+// so it predates the Cloudflare migration and every endpoint added since.
+// Pointing the app there meant Places, Memories, Trips, the interests step and
+// the whole Admin OS returned "not found" — nothing was wrong with the client.
+//
+// Until the custom domain is cut over to the Worker, target the Worker
+// directly. EXPO_PUBLIC_API_ORIGIN overrides this for local work.
+export const ORIGIN =
+  process.env.EXPO_PUBLIC_API_ORIGIN || 'https://drinkedinn.madasales15.workers.dev';
 export const BASE = `${ORIGIN}/api`;
 
 const api = axios.create({
   baseURL: BASE,
-  timeout: 20000,
+  // 12s, not 20. A request that is going to fail should say so while the
+  // person is still looking at the screen. At 20s a failed call reads as a
+  // frozen app rather than a failed one — and on a screen that fires several
+  // calls, the slowest one decides how long the spinner sits there.
+  timeout: 12000,
   maxRedirects: 0,
   headers: { Accept: 'application/json' },
 });

@@ -294,7 +294,7 @@ export default function AuthScreen() {
                 <Text style={{ color: t.textSecondary, fontWeight: '600' }} onPress={() => Linking.openURL(`${ORIGIN}/privacy`).catch(() => {})}>
                   Privacy Policy
                 </Text>
-                , and confirm you'll drink responsibly.
+                , and confirm you're of legal drinking age.
               </Text>
             </View>
           </Animated.View>
