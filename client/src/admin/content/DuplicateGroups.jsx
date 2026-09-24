@@ -88,14 +88,15 @@ function Group({ group, canEdit, onOpen }) {
       <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ fontSize: 11.5, color: C.textFaint, lineHeight: 1.6, flex: 1, minWidth: 220 }}>
           {canEdit
-            ? 'Merging is manual — the API has no merge endpoint. Copy these details into the handover so visits and stories are not stranded on the row you drop.'
-            : 'Merging is manual and needs places.edit, which your role does not have. Pass these ids to someone who does.'}
+            ? 'Merging is manual — the API has no merge endpoint, so nothing here can do it for you. Copy these details into the handover so visits and stories are not stranded on the row that gets dropped.'
+            : 'Merging is manual, happens outside this console, and is a places.edit job your role does not hold. Copy the details and pass the ids to someone who does.'}
         </div>
-        {canEdit && (
-          <button type="button" onClick={copy} style={actionBtn(copied ? C.green : C.textMuted)}>
-            {copied ? '✓ Copied' : 'Copy details'}
-          </button>
-        )}
+        {/* Copying is not a server action and reveals nothing that is not
+            already on screen, so it is offered whatever the role — the note
+            above says who can act on it. */}
+        <button type="button" onClick={copy} style={actionBtn(copied ? C.green : C.textMuted)}>
+          {copied ? '✓ Copied' : 'Copy details'}
+        </button>
       </div>
 
       {showNote && (

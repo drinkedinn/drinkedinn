@@ -1,12 +1,25 @@
 // src/admin/content/PlacesAdmin.jsx
 // The places catalogue.
 //
-// Contract: GET /api/places?q=&city=&country= returns a bare ARRAY of place
-// rows — { id, name, category, city, country, lat, lng, cover_url, created_by,
-// created_at } decorated with { saved, visit_count, story_count } — newest
-// first, capped at 50. There is no creator name in that payload (only
-// created_by), no total count, and no pagination, and every one of those gaps
-// is stated on screen rather than papered over.
+// Contract — server/routes/places.js:
+//   GET /api/places?q=&city=&country=  → a bare ARRAY (not an envelope) of
+//     place rows: { id, name, category, city, country, lat, lng, cover_url,
+//     created_by, created_at } each decorated by decorate() with
+//     { saved, visit_count, story_count }. Newest first, LIMIT 50, no total,
+//     no pagination. `country` matches an exact upper-cased ISO-2 code.
+//   GET /api/places/:id → the same row plus { friends, top_stories,
+//     recent_stories } (see PlaceDetail, which does not render `friends`).
+//
+// Two things this panel refuses to fake:
+//   - There is NO merge endpoint. Duplicates are surfaced and described well
+//     enough to merge by hand; nothing here merges anything.
+//   - There is no creator NAME in the list payload, only created_by. The table
+//     shows the id and says so; the detail view resolves the name.
+//
+// Note on gating: /api/places is behind plain `auth`, not the admin chain —
+// it is the same public venue catalogue members browse. This panel still
+// honours places.read so the console matches the role model rather than
+// quietly being the one screen that ignores it.
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import api from '../../api';
@@ -15,14 +28,19 @@ import {
   labelStyle, inputStyle, actionBtn, thStyle, tdStyle,
   fmtDate, fmtCount, plainPreview, apiError,
 } from './ui';
-import { can, hasPermissionSource, PERMS } from './permissions';
+import { PERMS } from './permissions';
+import usePanelPermissions from './usePanelPermissions';
 import { findDuplicateGroups } from './duplicates';
 import DuplicateGroups from './DuplicateGroups';
 import PlaceDetail from './PlaceDetail';
 
 const RESULT_CAP = 50; // server-side LIMIT in routes/places.js
 
-export default function PlacesAdmin({ permissions, role }) {
+export default function PlacesAdmin({ permissions = null, role = null }) {
+  const perms = usePanelPermissions({ permissions, role });
+  const mayRead = perms.can(PERMS.placesRead);
+  const mayEdit = perms.can(PERMS.placesEdit);
+
   const [searchInput, setSearchInput] = useState('');
   const [query, setQuery]             = useState('');
   const [country, setCountry]         = useState('');
@@ -31,10 +49,6 @@ export default function PlacesAdmin({ permissions, role }) {
   const [error, setError]             = useState('');
   const [onlyDuplicates, setOnlyDuplicates] = useState(false);
   const [detailId, setDetailId]       = useState(null);
-
-  const mayRead    = can(permissions, PERMS.placesRead);
-  const mayEdit    = can(permissions, PERMS.placesEdit);
-  const permsKnown = hasPermissionSource(permissions);
 
   const countryValid = country === '' || /^[A-Z]{2}$/.test(country);
 
@@ -50,8 +64,8 @@ export default function PlacesAdmin({ permissions, role }) {
     try {
       const params = {};
       if (query) params.q = query;
-      // The server matches country exactly on an upper-cased ISO-2 code; a
-      // half-typed code would silently return nothing, so it is not sent.
+      // The server compares country exactly against an upper-cased ISO-2 code.
+      // A half-typed code would match nothing, so it is never sent.
       if (/^[A-Z]{2}$/.test(country)) params.country = country;
       const r = await api.get('/places', { params });
       setPlaces(Array.isArray(r?.data) ? r.data.filter(Boolean) : []);
@@ -83,14 +97,16 @@ export default function PlacesAdmin({ permissions, role }) {
     [places, onlyDuplicates, duplicateIds]
   );
 
+  if (!perms.ready) return <Loading label="Checking your permissions…" />;
+
   if (!mayRead) {
     return (
       <EmptyState
         icon="🔒"
         title="Places are not part of your role"
-        hint={permsKnown
-          ? `The places catalogue needs the ${PERMS.placesRead} permission${role ? `, and the ${role} role does not have it` : ''}.`
-          : 'The admin shell did not pass a permission set to this panel, so it cannot confirm you hold places.read.'}
+        hint={perms.source === 'failed'
+          ? `Your permissions could not be read, so nothing is shown. ${perms.error}`
+          : `The places catalogue needs the ${PERMS.placesRead} permission${perms.role ? `, and the ${perms.role} role does not have it` : ''}.`}
       />
     );
   }
@@ -101,7 +117,7 @@ export default function PlacesAdmin({ permissions, role }) {
       <Notice icon="🗺️">
         The catalogue is the venue list every post, visit and save points at. Duplicate rows split one venue's
         history in two, so they are grouped below.{' '}
-        <strong>There is no merge endpoint — merging is a manual, out-of-console job.</strong>
+        <strong>There is no merge or edit endpoint — this screen is read-only, and merging is a manual job outside the console.</strong>
       </Notice>
 
       {/* ── Search / filter ── */}
@@ -190,15 +206,15 @@ export default function PlacesAdmin({ permissions, role }) {
       {/* ── Catalogue ── */}
       {loading ? (
         <Loading label="Loading places…" />
-      ) : !error && places.length === 0 ? (
+      ) : error ? null : places.length === 0 ? (
         <EmptyState
           icon="🗺️"
           title="No places match"
           hint={query || country ? 'Nothing matched that search. Try a shorter term or clear the country filter.' : 'The catalogue is empty — no venue has been added yet.'}
         />
-      ) : !error && rows.length === 0 ? (
+      ) : rows.length === 0 ? (
         <EmptyState icon="✅" title="No duplicates in this slice" hint="Every place loaded here has a distinct normalised name for its city." />
-      ) : !error ? (
+      ) : (
         <Card>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -207,8 +223,8 @@ export default function PlacesAdmin({ permissions, role }) {
               </caption>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${C.border}` }}>
-                  {['Place', 'Category', 'City', 'Country', 'Added by', 'Visits', 'Stories', 'Added', ''].map((h, i) => (
-                    <th key={h + i} scope="col" style={thStyle}>{h}</th>
+                  {['Place', 'Category', 'City', 'Country', 'Added by', 'Visits', 'Stories', 'Added', 'Actions'].map((h) => (
+                    <th key={h} scope="col" style={thStyle}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -228,7 +244,7 @@ export default function PlacesAdmin({ permissions, role }) {
                     </td>
                     <td style={{ ...tdStyle, color: C.textMuted, fontSize: 12.5 }}>{plainPreview(p.category, 28) || '—'}</td>
                     <td style={{ ...tdStyle, color: C.textMuted, fontSize: 12.5 }}>{plainPreview(p.city, 28) || '—'}</td>
-                    <td style={{ ...tdStyle, color: C.textMuted, fontSize: 12.5 }}>{p.country || '—'}</td>
+                    <td style={{ ...tdStyle, color: C.textMuted, fontSize: 12.5 }}>{plainPreview(p.country, 4) || '—'}</td>
                     <td style={{ ...tdStyle, color: C.textFaint, fontSize: 12 }}>
                       {p.created_by != null ? `User #${p.created_by}` : '—'}
                     </td>
@@ -244,11 +260,12 @@ export default function PlacesAdmin({ permissions, role }) {
             </table>
           </div>
         </Card>
-      ) : null}
+      )}
 
       {!loading && !error && rows.length > 0 && (
         <div style={{ fontSize: 11.5, color: C.textFaint, lineHeight: 1.6 }}>
           The places API returns a creator id, not a name, so “Added by” shows the account id. Open a place to resolve it.
+          Visit and story figures are totals for the venue — this console does not show who visited where.
         </div>
       )}
 

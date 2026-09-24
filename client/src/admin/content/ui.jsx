@@ -156,8 +156,12 @@ export function fmtCount(value) {
 export function plainPreview(text, max = 220) {
   if (text == null) return '';
   const cleaned = String(text)
+    // Control characters, then the bidi and zero-width ranges. Written as
+    // explicit escapes: the literal characters are invisible in an editor, so
+    // a future edit could delete one without anyone seeing it go.
     // eslint-disable-next-line no-control-regex
-    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f​-‏‪-‮⁦-⁩]/g, '')
+    .replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, '')
+    .replace(/[​-‏‪-‮⁦-⁩﻿]/g, '')
     .replace(/[ \t]+/g, ' ')
     .trim();
   if (cleaned.length <= max) return cleaned;

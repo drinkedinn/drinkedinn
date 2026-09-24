@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../api';
 import Modal from './Modal';
+import ImagePreview from './ImagePreview';
 import { C, Badge, ErrorBanner, actionBtn, fmtDate, fmtDateTime, fmtCount, plainPreview, apiError } from './ui';
 
 // Creator names are resolved one id at a time and remembered for the session —
@@ -102,15 +103,14 @@ export default function PlaceDetail({ placeId, onClose }) {
             </Row>
             <Row label="Added on">{fmtDate(place.created_at)}</Row>
             <Row label="Cover image">
-              {place.cover_url
-                ? <span style={{ color: C.textMuted, fontSize: 12 }} title="Not loaded in the console">{plainPreview(place.cover_url, 90)}</span>
-                : <span style={{ color: C.textFaint }}>none</span>}
+              <ImagePreview url={place.cover_url} label="cover" maxHeight={240} />
             </Row>
           </dl>
 
           <div style={{ marginTop: 10, fontSize: 11.5, color: C.textFaint, lineHeight: 1.6 }}>
-            Cover images are shown as a URL, not loaded — the console does not fetch member-supplied images.
-            Who visited this place is not shown; counts only.
+            Who visited this place is not shown — visit and story figures are totals for the venue. This view is
+            read-only. Note that reads are not audited: <code>auditAdmin</code> records mutating admin requests
+            only, so nothing here leaves a trace of who looked.
           </div>
 
           <div style={{ marginTop: 22 }}>

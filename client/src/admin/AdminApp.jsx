@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Avatar from '../components/Avatar';
@@ -10,6 +10,12 @@ const Icon = ({ d, size = 18, color = 'currentColor' }) => (
   </svg>
 );
 
+import { CommandCentre, AuditLog } from './command';
+import { ModerationQueue } from './moderation';
+import { PeoplePanel } from './people';
+import { PlatformPanel } from './platform';
+import { ContentList, PlacesAdmin } from './content';
+
 const NAV = [
   { id: 'overview',   label: 'Dashboard',   emoji: '📊' },
   { id: 'users',      label: 'Users',        emoji: '👥' },
@@ -18,6 +24,17 @@ const NAV = [
   { id: 'brands',     label: 'Brand Review', emoji: '🏷️' },
   { id: 'activity',   label: 'Activity',     emoji: '⚡' },
   { id: 'marketing',  label: 'Marketing',    emoji: '📣' },
+
+  // ── Admin OS ──────────────────────────────────────────────────────────
+  // `perm` hides an entry this admin cannot use. The server enforces the same
+  // permission regardless — this only avoids offering a door that is locked.
+  { id: 'command',    label: 'Command Centre', emoji: '🛰️', perm: 'analytics.read' },
+  { id: 'moderation', label: 'Moderation',     emoji: '🛡️', perm: 'reports.read' },
+  { id: 'people',     label: 'People & Roles', emoji: '🪪', perm: 'users.read' },
+  { id: 'contentos',  label: 'Content',        emoji: '📝', perm: 'content.read' },
+  { id: 'placesos',   label: 'Places',         emoji: '🗺️', perm: 'places.read' },
+  { id: 'platform',   label: 'Platform',       emoji: '🎛️', perm: 'flags.read' },
+  { id: 'audit',      label: 'Audit Log',      emoji: '📓', perm: 'audit.read' },
 ];
 
 const MARKETING_SKILLS = [
@@ -81,6 +98,33 @@ const Badge = ({ label, color, bg }) => (
 export default function AdminApp() {
   const { user, logout, loading } = useAuth();
   const [page, setPage]           = useState('overview');
+
+  // This admin's own role and permission set. GET /api/admin/roles/me is
+  // deliberately ungated on the server precisely so the console can hide what
+  // the caller cannot do — a moderator has no roles.read, so gating it would
+  // make every panel fail closed. Failing OPEN here is safe: the server
+  // enforces every permission regardless, so the worst case is offering a
+  // button that returns 403 rather than silently granting anything.
+  const [adminRole, setAdminRole] = useState(null);
+  const [adminPerms, setAdminPerms] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    api.get('/admin/roles/me')
+      .then((r) => {
+        if (!alive) return;
+        setAdminRole(r.data?.role || null);
+        setAdminPerms(new Set(r.data?.permissions || []));
+      })
+      .catch(() => { if (alive) setAdminPerms(new Set()); });
+    return () => { alive = false; };
+  }, []);
+
+  // Until identity resolves, show everything rather than flashing an empty
+  // sidebar; once it has, hide entries this role cannot use.
+  const canSee = useCallback(
+    (perm) => !perm || adminPerms === null || adminPerms.has(perm),
+    [adminPerms]
+  );
   const [sideOpen, setSideOpen]   = useState(true);
 
   // Data states
@@ -224,7 +268,7 @@ export default function AdminApp() {
 
         {/* Nav items */}
         <nav style={{ padding: '12px 8px', flex: 1 }}>
-          {NAV.map(item => {
+          {NAV.filter((item) => canSee(item.perm)).map(item => {
             const active = page === item.id;
             return (
               <button key={item.id} onClick={() => setPage(item.id)} style={{
@@ -681,6 +725,18 @@ export default function AdminApp() {
           )}
 
           {/* ── MARKETING ── */}
+          {/* ── Admin OS panels ──────────────────────────────────────
+              Each receives the resolved role + permissions so it can withhold
+              controls this admin cannot use. The server enforces the same
+              permission on every call regardless. */}
+          {page === 'command'    && <CommandCentre   permissions={adminPerms} role={adminRole} />}
+          {page === 'audit'      && <AuditLog        permissions={adminPerms} role={adminRole} />}
+          {page === 'moderation' && <ModerationQueue permissions={adminPerms} role={adminRole} />}
+          {page === 'people'     && <PeoplePanel     permissions={adminPerms} role={adminRole} />}
+          {page === 'contentos'  && <ContentList     permissions={adminPerms} role={adminRole} />}
+          {page === 'placesos'   && <PlacesAdmin     permissions={adminPerms} role={adminRole} />}
+          {page === 'platform'   && <PlatformPanel   permissions={adminPerms} role={adminRole} />}
+
           {page === 'marketing' && (
             <div>
               <p style={{ margin: '0 0 20px', color: C.textMuted, fontSize: 13 }}>

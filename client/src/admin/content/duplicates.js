@@ -18,7 +18,7 @@ const LEADING_ARTICLE = /^(the|le|la|les|el|los|il|de|het|das|der|die)\s+/;
 function basicNormalise(value) {
   return String(value ?? '')
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[̀-ͯ]/g, '') // combining marks left by NFD
     .toLowerCase()
     .replace(/&/g, ' and ')
     .replace(/[‘’'`´]/g, '')

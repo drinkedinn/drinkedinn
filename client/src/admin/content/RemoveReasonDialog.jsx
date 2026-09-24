@@ -53,10 +53,14 @@ export default function RemoveReasonDialog({ post, submitting, error, onCancel, 
       <form id="remove-post-form" onSubmit={submit}>
         <div style={{ background: C.red + '11', border: `1px solid ${C.red}44`, borderRadius: 12, padding: '14px 16px', marginBottom: 18 }}>
           <div style={{ fontSize: 13, color: C.text, lineHeight: 1.65 }}>
-            This permanently deletes <strong>post #{post?.id ?? '—'}</strong> by <strong>{author}</strong>,
-            along with its <strong>{cheers.toLocaleString()} cheer{cheers === 1 ? '' : 's'}</strong> and{' '}
+            This permanently deletes <strong>post #{plainPreview(String(post?.id ?? '—'), 12)}</strong> by{' '}
+            <strong>{plainPreview(author, 48)}</strong>, along with its{' '}
+            <strong>{cheers.toLocaleString()} cheer{cheers === 1 ? '' : 's'}</strong> and{' '}
             <strong>{comments.toLocaleString()} comment{comments === 1 ? '' : 's'}</strong>.
             The author is not notified by this console. It cannot be undone.
+            <div style={{ marginTop: 8, color: C.textMuted, fontSize: 12.5 }}>
+              Your account, this post's id, and the reason you type are written to the admin audit log.
+            </div>
           </div>
         </div>
 
