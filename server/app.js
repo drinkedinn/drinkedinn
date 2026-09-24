@@ -160,12 +160,18 @@ function createApp({ isWorker = IS_WORKER } = {}) {
     app.use('/api/admin/moderation', ...adminChain, require('./routes/moderation'));
     app.use('/api/admin/flags', ...adminChain, require('./routes/flags').adminRouter);
     app.use('/api/admin/command', ...adminChain, require('./routes/commandCenter'));
+
+    // The ORIGINAL admin router, on the SAME chain. It was mounted bare below,
+    // which meant the five oldest and most destructive admin routes — delete a
+    // member, delete a post — ran with no permission check, no typed reason and
+    // no audit entry, while the new panels were fully governed. A console is
+    // only as accountable as its least-governed route.
+    app.use('/api/admin', ...adminChain, require('./routes/admin'));
   }
 
   // Flag evaluation for the apps — authenticated, not admin.
   app.use('/api/flags', require('./routes/flags'));
 
-  app.use('/api/admin', require('./routes/admin'));
   app.use('/api/referrals', require('./routes/referrals'));
   app.use('/api/reports', require('./routes/reports'));
   app.use('/api/featured', require('./routes/featured'));

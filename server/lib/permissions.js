@@ -84,8 +84,11 @@ const ROLES = {
 // a second admin's approval. Keeping the list here rather than at each route
 // means it cannot drift per-handler.
 const HIGH_IMPACT = new Set([
-  'users.delete', 'users.ban', 'compliance.publish', 'flags.write',
-  'config.write', 'roles.write', 'ads.approve',
+  'users.delete', 'users.ban', 'users.suspend', 'compliance.publish',
+  'flags.write', 'config.write', 'roles.write', 'ads.approve',
+  // Removing someone's post is destructive and contestable. If a moderator
+  // cannot say why in eight characters, they should not be removing it.
+  'content.remove',
 ]);
 
 const ROLE_NAMES = Object.keys(ROLES);

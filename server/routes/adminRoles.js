@@ -11,6 +11,20 @@ const { ROLE_NAMES, ROLES, isValidRole } = require('../lib/permissions');
 
 const router = express.Router();
 
+// The caller's OWN role and permissions.
+//
+// Deliberately NOT behind roles.read: every admin needs to know what they
+// themselves may do, or the console cannot hide actions they would only be
+// refused for. A moderator has no roles.read, so gating this would have made
+// every panel fail closed and render nothing.
+router.get('/me', async (req, res) => {
+  res.json({
+    user_id: req.user.id,
+    role: req.admin.role,
+    permissions: [...req.admin.permissions],
+  });
+});
+
 // The catalogue, so the UI can render roles and what each one actually grants
 // rather than hard-coding a list that drifts from the server's.
 router.get('/catalogue', requirePermission('roles.read'), (req, res) => {
