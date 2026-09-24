@@ -51,6 +51,12 @@ const OWNED = [
   // A blocked-user policy or a data-portability request must erase both.
   ['saved_places', ['user_id']],
   ['place_visits', ['user_id']],
+
+  // An admin role is an entitlement, not a record worth keeping: an erased
+  // account must not leave a row that would re-grant access if the id were
+  // ever reused. The ACTIONS that admin took stay in admin_audit (see
+  // RETAINED below) — the grant itself goes.
+  ['admin_roles', ['user_id']],
 ];
 
 // Tables that reference a user and are DELIBERATELY not erased. Listed

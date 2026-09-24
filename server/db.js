@@ -346,6 +346,40 @@ async function init() {
     );
     CREATE INDEX IF NOT EXISTS idx_visits_user ON place_visits(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_visits_place ON place_visits(place_id);
+
+    -- ── Admin ────────────────────────────────────────────────────────────
+    -- Role assignment. One role per admin; the role names and the permissions
+    -- each carries live in lib/permissions.js, not here, so re-scoping a role
+    -- does not need a migration.
+    CREATE TABLE IF NOT EXISTS admin_roles (
+      user_id    INTEGER PRIMARY KEY,
+      role       TEXT NOT NULL,
+      granted_by INTEGER,
+      granted_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    -- Feature flags with a kill switch. An enabled=0 beats any targeting, so
+    -- turning something off is one write and takes effect on the next
+    -- evaluation — no App Store release needed to stop a bad feature.
+    CREATE TABLE IF NOT EXISTS feature_flags (
+      key         TEXT PRIMARY KEY,
+      enabled     INTEGER NOT NULL DEFAULT 0,
+      rollout_pct INTEGER NOT NULL DEFAULT 0,
+      targeting   TEXT DEFAULT '{}',
+      description TEXT DEFAULT '',
+      updated_by  INTEGER,
+      updated_at  INTEGER NOT NULL
+    );
+
+    -- Remote config: non-sensitive app behaviour changeable without a release
+    -- (minimum supported version, upload limits, maintenance mode).
+    CREATE TABLE IF NOT EXISTS app_config (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   // Safe migrations for existing DBs
@@ -399,6 +433,19 @@ async function init() {
     // Explore's editorial sections when the account is too new for real signal.
     `ALTER TABLE users ADD COLUMN interests TEXT DEFAULT ''`,
     `ALTER TABLE users ADD COLUMN home_city TEXT DEFAULT ''`,
+    // Moderation queue. P0 is reserved for child-safety and immediate-harm
+    // reports, which must never sit behind a pile of spam in a chronological
+    // list — the whole point of a priority is that severity beats arrival time.
+    `ALTER TABLE reports ADD COLUMN priority TEXT NOT NULL DEFAULT 'P2'`,
+    `ALTER TABLE reports ADD COLUMN assigned_to INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolved_by INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolved_at INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolution TEXT`,
+    // Enforcement state, so a suspension is a fact on the account rather than
+    // something implied by a missing row.
+    `ALTER TABLE users ADD COLUMN suspended_until INTEGER`,
+    `ALTER TABLE users ADD COLUMN banned_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN moderation_note TEXT`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}

@@ -145,6 +145,26 @@ function createApp({ isWorker = IS_WORKER } = {}) {
   app.use('/api/challenges', require('./routes/challenges'));
   app.use('/api/badges', require('./routes/badges'));
   app.use('/api/sommelier', require('./routes/sommelier'));
+  // ── Admin OS ──────────────────────────────────────────────────────────
+  // One mount, one chain: authenticated → role resolved → every mutating
+  // request audited. Audit is applied HERE rather than inside each handler
+  // because the previous "remember to call logAdminAction" convention held in
+  // one route out of five. A new admin route is audited because it is mounted,
+  // not because someone remembered.
+  {
+    const requireAuth = require('./middleware/auth');
+    const { loadAdmin, auditAdmin } = require('./middleware/adminAuth');
+    const adminChain = [requireAuth, loadAdmin, auditAdmin];
+
+    app.use('/api/admin/roles', ...adminChain, require('./routes/adminRoles'));
+    app.use('/api/admin/moderation', ...adminChain, require('./routes/moderation'));
+    app.use('/api/admin/flags', ...adminChain, require('./routes/flags').adminRouter);
+    app.use('/api/admin/command', ...adminChain, require('./routes/commandCenter'));
+  }
+
+  // Flag evaluation for the apps — authenticated, not admin.
+  app.use('/api/flags', require('./routes/flags'));
+
   app.use('/api/admin', require('./routes/admin'));
   app.use('/api/referrals', require('./routes/referrals'));
   app.use('/api/reports', require('./routes/reports'));
