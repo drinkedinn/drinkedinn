@@ -22,6 +22,7 @@ import PourOfTheDay from '../components/feedmodes/PourOfTheDay';
 import MemoriesRail from '../components/memories/MemoriesRail';
 import Segmented from '../components/home/Segmented';
 import FeaturedCard from '../components/home/FeaturedCard';
+import { navigateByName } from '../lib/nav';
 
 const TABS = [
   { key: 'for-you', label: 'For you' },
@@ -139,7 +140,7 @@ export default function FeedScreen({ navigation }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: id });
 
   return (
     <Screen>
@@ -157,14 +158,14 @@ export default function FeedScreen({ navigation }) {
           </View>
         </View>
         <View style={styles.headerActions}>
-          <Bounce onPress={() => navigation.navigate('Explore')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Search">
+          <Bounce onPress={() => navigateByName(navigation, 'Explore')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Search">
             <Icon name="search-outline" size={19} color={t.text} />
           </Bounce>
           <Bounce onPress={() => navigation.navigate('Activity')} haptic="light" style={[styles.iconBtn, { backgroundColor: t.surfaceAlt }]} accessibilityLabel="Activity">
             <Icon name="notifications-outline" size={19} color={t.text} />
           </Bounce>
           <MessagesHeaderButton />
-          <Bounce onPress={() => navigation.navigate('Profile')} haptic="light" accessibilityLabel="Your account">
+          <Bounce onPress={() => navigateByName(navigation, 'Profile')} haptic="light" accessibilityLabel="Your account">
             <Avatar uri={user?.avatar} name={user?.name} size={34} />
           </Bounce>
         </View>
@@ -185,7 +186,13 @@ export default function FeedScreen({ navigation }) {
           scrollEventThrottle={16}
           ListHeaderComponent={
             <View>
-              <StoriesRail />
+              <StoriesRail
+                // Every tap target in the rail is wired to these optional
+                // callbacks. Mounted bare, the whole rail was inert — tapping a
+                // story or the "add" tile did nothing at all.
+                onCompose={() => navigation.navigate('CreateStory')}
+                onOpenViewer={(params) => navigation.navigate('StoryViewer', params)}
+              />
               {/* Renders nothing until there are memories worth showing. */}
               <MemoriesRail />
               <StoryRow
@@ -229,7 +236,7 @@ export default function FeedScreen({ navigation }) {
                 title="Your round is quiet"
                 body="Connect with a few people and their pours will land here."
                 actionLabel="Find people"
-                onAction={() => navigation.navigate('Explore')}
+                onAction={() => navigateByName(navigation, 'Explore')}
               />
             ) : (
               <EmptyState

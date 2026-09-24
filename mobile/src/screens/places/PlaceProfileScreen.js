@@ -31,6 +31,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../theme/ThemeContext';
 import { radius, type } from '../../theme/tokens';
 import { Screen, Icon, Bounce, EmptyState, FadeIn, useToast } from '../../components/ui';
+import { navigateByName } from '../../lib/nav';
 import {
   PlaceCover,
   FriendsRail,
@@ -281,7 +282,12 @@ export default function PlaceProfileScreen({ navigation, route }) {
       if (!story?.id) return;
       // PostDetailScreen reads route.params.post and hydrates only when the
       // object has no `content`, so passing the whole row paints immediately.
-      navigation.navigate('PostDetail', { post: story });
+      // Pass ONLY the id. The place-profile row has no cheer_count /
+      // user_cheered / comment_count, and PostDetailScreen skips its own
+      // hydration whenever the seed object already has `content` — so the
+      // full row painted a cheered post as un-cheered, and tapping the
+      // button removed the existing cheer.
+      navigation.navigate('PostDetail', { post: { id: story.id } });
     },
     [navigation]
   );
@@ -291,7 +297,7 @@ export default function PlaceProfileScreen({ navigation, route }) {
   const openUser = useCallback(
     (userId) => {
       if (userId == null) return;
-      if (String(userId) === String(me?.id)) navigation.navigate('Profile');
+      if (String(userId) === String(me?.id)) navigateByName(navigation, 'Profile');
       else navigation.navigate('User', { userId });
     },
     [navigation, me?.id]

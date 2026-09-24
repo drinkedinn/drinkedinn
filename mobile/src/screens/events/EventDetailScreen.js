@@ -13,6 +13,7 @@ import { Screen, Header, Icon, Avatar, Bounce, Button, EmptyState, useToast } fr
 import DateChip from '../../components/events/DateChip';
 import { fullDate, formatTime, longDate, hasTime, parseEventDate, whenLabel } from '../../components/events/dateUtils';
 import { track } from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 const REPORT_REASONS = [
   { key: 'unsafe_drinking', label: 'Encourages unsafe drinking' },
@@ -203,18 +204,26 @@ export default function EventDetailScreen({ navigation, route }) {
         { text: 'Close', style: 'cancel' },
       ]);
     } else {
-      Alert.alert(event.name || 'Options', null, [
-        { text: 'Share', onPress: share },
-        { text: 'Report this event', onPress: chooseReason },
-        { text: `Block ${event.name || 'this host'}`, style: 'destructive', onPress: blockHost },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+      // Four buttons: Android keeps three and drops Cancel. Use the sheet,
+      // which takes any number and always renders its own Cancel.
+      showReportSheet({
+        title: event.name || 'Options',
+        reasons: [
+          { key: 'share',  label: 'Share' },
+          { key: 'report', label: 'Report this event' },
+          { key: 'block',  label: `Block ${event.name || 'this host'}` },
+        ],
+      }).then((key) => {
+        if (key === 'share') share();
+        else if (key === 'report') chooseReason();
+        else if (key === 'block') blockHost();
+      });
     }
   }, [event, isHost, share, confirmDelete, chooseReason, blockHost]);
 
   const openHost = useCallback(() => {
     if (!event) return;
-    if (isHost) navigation.navigate('Profile');
+    if (isHost) navigateByName(navigation, 'Profile');
     else navigation.navigate('User', { userId: event.user_id });
   }, [event, isHost, navigation]);
 

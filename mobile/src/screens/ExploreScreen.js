@@ -18,6 +18,7 @@ import PostCard from '../components/PostCard';
 import TonightRail from '../components/events/TonightRail';
 import ChallengesRail from '../components/challenges/ChallengesRail';
 import Segmented from '../components/home/Segmented';
+import { navigateByName } from '../lib/nav';
 
 const TABS = [
   { key: 'people', label: 'People' },
@@ -94,7 +95,7 @@ export default function ExploreScreen({ navigation }) {
   }, [loadResting]);
 
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: id });
   const openPost = (post) => navigation.navigate('PostDetail', { post });
 
   const isSearch = !!q.trim();

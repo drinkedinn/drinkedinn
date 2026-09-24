@@ -38,6 +38,7 @@ import CodeCard from '../../components/referrals/CodeCard';
 import LeaderRow from '../../components/referrals/LeaderRow';
 import { track } from '../../lib/track';
 import { pop } from '../../ui/haptics';
+import { navigateByName } from '../../lib/nav';
 
 // Warm, on-brand invite copy. People first, then the moment. No mention of
 // drinks or quantity — we're inviting them to a place, not a habit.
@@ -198,7 +199,7 @@ export default function InviteScreen({ navigation }) {
   const openProfile = useCallback(
     (leader) => {
       if (!leader?.id) return;
-      if (leader.id === user?.id) navigation.navigate('Profile');
+      if (leader.id === user?.id) navigateByName(navigation, 'Profile');
       else navigation.navigate('User', { userId: leader.id });
     },
     [navigation, user?.id]

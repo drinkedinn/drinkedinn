@@ -29,6 +29,7 @@ import useUnreadMessages from '../../components/messages/useUnreadMessages';
 import useThreadActions from './useThreadActions';
 import { dayLabel, isNewDay, isBigGap } from './timeAgo';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 const POLL_MS = 15000;
 const MAX_LEN = 1000;
@@ -108,7 +109,7 @@ export default function ThreadScreen({ navigation, route }) {
 
   const openProfile = useCallback(() => {
     if (!userId) return;
-    if (user && userId === user.id) navigation.navigate('Profile');
+    if (user && userId === user.id) navigateByName(navigation, 'Profile');
     else navigation.navigate('User', { userId });
   }, [navigation, userId, user]);
 

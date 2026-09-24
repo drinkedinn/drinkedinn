@@ -15,6 +15,7 @@ import { PostSkeleton } from '../../components/ui/Skeleton';
 import PostCard from '../../components/PostCard';
 import usePostActions from '../../hooks/usePostActions';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 // Normalise "#whisky", " whisky ", "%23whisky" all to the same canonical form
 // so we can display it consistently and pass a clean value to the server.
@@ -69,7 +70,7 @@ export default function HashtagScreen({ navigation, route }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: id });
 
   return (
     <Screen>

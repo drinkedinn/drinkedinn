@@ -15,6 +15,7 @@ import { PostSkeleton } from '../../components/ui/Skeleton';
 import PostCard from '../../components/PostCard';
 import usePostActions from '../../hooks/usePostActions';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 export default function CheeredScreen({ navigation }) {
   const { t } = useTheme();
@@ -60,7 +61,7 @@ export default function CheeredScreen({ navigation }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: id });
 
   return (
     <Screen>
@@ -108,7 +109,7 @@ export default function CheeredScreen({ navigation }) {
               title="No cheers yet"
               body="Tap the pint on a moment to save it here. It's your way of saying, this one mattered."
               actionLabel="Find something worth a cheers"
-              onAction={() => navigation.navigate('Home')}
+              onAction={() => navigateByName(navigation, 'Home')}
             />
           }
         />

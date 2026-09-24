@@ -75,6 +75,12 @@ export default function OnboardingV2Screen() {
 
   const [hydrated, setHydrated] = useState(false);
   const [step, setStep] = useState(1);
+  // The legal minimum is per-country and decided by the SERVER
+  // (server/lib/jurisdictions.js). Hardcoding 18 told a US member they were in
+  // an "18+ community" when the server would refuse them until 21, and India's
+  // minimum is 25. Resolve it for the chosen country and fall back to the 18
+  // floor only while the call is in flight.
+  const [minAge, setMinAge] = useState(MIN_AGE);
   const [dob, setDob] = useState(() => emptyState().dob);
   const [countryCode, setCountryCode] = useState('');
   const [accepted, setAccepted] = useState(false);
@@ -90,6 +96,16 @@ export default function OnboardingV2Screen() {
   const [finishing, setFinishing] = useState(false);
 
   /* ── draft: restore, then mirror every change ───────────────────────────── */
+
+  useEffect(() => {
+    const cc = country?.code;
+    if (!cc) { setMinAge(MIN_AGE); return; }
+    let alive = true;
+    api.get(`/auth/rules?country=${encodeURIComponent(cc)}`)
+      .then((r) => { if (alive && r?.data?.minAge) setMinAge(r.data.minAge); })
+      .catch(() => { /* keep the floor; the server re-checks at register anyway */ });
+    return () => { alive = false; };
+  }, [country?.code]);
 
   useEffect(() => {
     let alive = true;
@@ -155,8 +171,8 @@ export default function OnboardingV2Screen() {
 
   /* ── step 2: age + country ──────────────────────────────────────────────── */
 
-  const underAge = isUnderAge(dob);
-  const ageOk = isOfAge(dob);
+  const underAge = isUnderAge(dob, minAge);
+  const ageOk = isOfAge(dob, minAge);
   const country = countryByCode(countryCode);
   const canPassAge = ageOk && !!country;
 
@@ -164,7 +180,7 @@ export default function OnboardingV2Screen() {
   // date is wrong while they are still halfway through typing it.
   const dobComplete = dob.d.length > 0 && dob.m.length > 0 && dob.y.length === 4;
   const dobError = underAge
-    ? `You need to be ${MIN_AGE} or older to use DrinkedInn.`
+    ? `You need to be ${minAge} or older to join from ${country?.name || 'your country'}.`
     : dobComplete && !ageOk
       ? "That date doesn't look right — check the day, month and year."
       : null;
@@ -183,11 +199,19 @@ export default function OnboardingV2Screen() {
       title: user.title || '',
       bio: user.bio || '',
       avatar: user.avatar || '',
+      // Date of birth and country go to their REAL columns, which the age gate
+      // and every jurisdiction decision actually read. They were previously
+      // buried in a `drinks.age_gate` blob that no server code looks at, so the
+      // whole step was collecting data into a void. The server treats both as
+      // write-once and re-validates them, so this cannot be used to change an
+      // age that is already set.
+      date_of_birth: ageOk ? `${dob.y}-${pad(dob.m)}-${pad(dob.d)}` : undefined,
+      country_code: country?.code || undefined,
       drinks: {
         ...existing,
-        age_gate: {
-          dob: ageOk ? `${dob.y}-${pad(dob.m)}-${pad(dob.d)}` : null,
-          country_code: country?.code || null,
+        // Consent has no column of its own yet; keeping the record here is
+        // better than losing it, and it is genuinely profile metadata.
+        consent: {
           accepted_terms: !!accepted,
           accepted_at: accepted ? new Date().toISOString() : null,
           flow: 'onboarding_v2',
@@ -321,7 +345,7 @@ export default function OnboardingV2Screen() {
             {underAge
               ? "We're sorry — you'll be welcome when you're older."
               : canPassAge
-                ? `${country.name} · ${MIN_AGE}+ community`
+                ? `${country.name} · ${minAge}+`
                 : 'Both are needed to continue.'}
           </FootNote>
           <Button label="Continue" onPress={goNext} disabled={!canPassAge} size="lg" full />
@@ -401,10 +425,12 @@ export default function OnboardingV2Screen() {
     );
   }
 
-  // Step 1's only forward action is the button itself, and steps 3 and 6 must
-  // be resolved, so Skip belongs to steps 2, 4 and 5 — and disappears from
-  // step 2 the moment someone tells us they are under age.
-  const onSkip = (step === 2 && !underAge) || step === 4 || step === 5 ? goSkip : null;
+  // Step 1's only forward action is the button itself. Steps 3 (consent) and 6
+  // must be resolved. Step 2 is the AGE GATE and must not be skippable either:
+  // offering Skip while the fields were still blank let the whole age + country
+  // step be bypassed with one tap, which is the opposite of what it is for.
+  // Skip therefore belongs to steps 4 and 5 only.
+  const onSkip = step === 4 || step === 5 ? goSkip : null;
 
   return (
     <Screen edges={['top', 'bottom']}>

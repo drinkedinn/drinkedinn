@@ -46,11 +46,14 @@ function Shell() {
       <StatusBar style={t.statusBar} />
       <ToastProvider>
         <ReportSheetProvider>
-          <CreateSheetProvider>
-            <AuthProvider>
+          {/* Inside AuthProvider: the Create sheet has to know when the session
+              ends, or its Modal stays on screen over the sign-in screen after
+              a logout. */}
+          <AuthProvider>
+            <CreateSheetProvider>
               <RootNavigator />
-            </AuthProvider>
-          </CreateSheetProvider>
+            </CreateSheetProvider>
+          </AuthProvider>
         </ReportSheetProvider>
       </ToastProvider>
     </NavigationContainer>

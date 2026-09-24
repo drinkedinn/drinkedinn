@@ -123,7 +123,7 @@ export function PeopleStep({
     >
       <Heading
         title="Find your people"
-        body="A few regulars worth following. Pull down for a fresh set, or skip — Discover is always there."
+        body="A few regulars worth following. Pull down for a fresh set, or skip — Explore is always there."
       />
 
       {loading ? (
@@ -135,7 +135,7 @@ export function PeopleStep({
           body={
             failed
               ? "We couldn't load suggestions just now. Give it another try."
-              : "No suggestions yet. Skip ahead — you'll find people in Discover."
+              : "No suggestions yet. Skip ahead — you'll find people in Explore."
           }
           actionLabel={failed ? 'Try again' : undefined}
           onAction={failed ? onRetry : undefined}
@@ -189,7 +189,7 @@ export function FinishStep({ pushStatus }) {
       {pushStatus === 'denied' && (
         <Note icon="information-circle-outline" tone="danger">
           Notifications are off in your device settings. You can turn them on later from
-          Account → Notifications.
+          Profile → Notifications.
         </Note>
       )}
       {pushStatus === 'granted' && (

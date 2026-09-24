@@ -90,33 +90,9 @@ export function countryLabel(code) {
 
 /* ── navigation ──────────────────────────────────────────────────────────── */
 
-/**
- * Navigate by route name from wherever these pillars happen to be mounted.
- *
- * ProfileScreen is registered on the root stack (as 'User'), and a navigation
- * action bubbles UP to parent navigators — it never reaches down into the tab
- * navigator nested inside 'Tabs'. So `navigate('Explore')` from the stack is
- * simply not handled, while the same call from a tab screen works. Rather than
- * hard-coding one of the two, the name is resolved against the navigators that
- * are actually above this component, with the nested form through 'Tabs' as
- * the fallback. Works whether the profile is pushed on the stack or lives in a
- * tab, and survives the integrator moving it.
- */
-export function navigateByName(navigation, name, params) {
-  if (!navigation?.navigate || !name) return;
-  let nav = navigation;
-  for (let depth = 0; nav && depth < 6; depth += 1) {
-    let names;
-    try { names = nav.getState?.()?.routeNames; } catch { names = null; }
-    if (Array.isArray(names) && names.includes(name)) {
-      nav.navigate(name, params);
-      return;
-    }
-    nav = nav.getParent?.();
-  }
-  // Not a route of any navigator above us — assume it lives in the tab shell.
-  navigation.navigate('Tabs', params ? { screen: name, params } : { screen: name });
-}
+// Re-exported from the shared implementation so there is exactly one copy.
+// See src/lib/nav.js for why this is needed at all.
+export { navigateByName } from '../../lib/nav';
 
 /* ── layout ──────────────────────────────────────────────────────────────── */
 

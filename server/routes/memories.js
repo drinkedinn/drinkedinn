@@ -19,6 +19,21 @@ const auth = require('../middleware/auth');
 
 const router = express.Router();
 
+// The list and the detail endpoint MUST agree about two things, or a card
+// opens onto posts that belong to a different card:
+//
+//   AGE_FILTER   which posts are old enough to be a memory at all
+//   BUCKET_KEY   how a post's location resolves to a bucket
+//
+// They are defined once here and used by both queries. Previously the detail
+// query omitted the age filter entirely (so a card advertising 4 stories
+// played 7) and matched location with a loose `city = ? OR country = ?` (so a
+// card keyed on a city also swept in posts keyed on its country).
+const AGE_FILTER = "p.created_at < datetime('now','-30 days')";
+
+// City wins over country, matching the list's `post.place_city || post.place_country`.
+const BUCKET_KEY = "CASE WHEN COALESCE(pl.city,'') <> '' THEN pl.city ELSE COALESCE(pl.country,'') END";
+
 router.get('/', auth, async (req, res) => {
   try {
     // Only posts >= 30 days old — the retention hook is "remember this NIGHT",
@@ -32,7 +47,7 @@ router.get('/', auth, async (req, res) => {
          FROM posts p
     LEFT JOIN places pl ON pl.id = p.place_id
         WHERE p.user_id = ?
-          AND p.created_at < datetime('now','-30 days')
+          AND ${AGE_FILTER}
      ORDER BY p.created_at DESC
         LIMIT 500`,
       [req.user.id]
@@ -98,12 +113,12 @@ router.get('/:key/posts', auth, async (req, res) => {
   try {
     const [ym, loc] = String(req.params.key).split('|');
     if (!/^\d{4}-\d{2}$/.test(ym)) return res.status(400).json({ error: 'Bad key.' });
-    const args = [req.user.id, `${ym}%`];
-    let locClause = '';
-    if (loc) {
-      locClause = 'AND (pl.city = ? OR pl.country = ?)';
-      args.push(loc, loc);
-    }
+    // Reproduce the list's bucketing exactly. An empty `loc` is a real bucket
+    // ("posts with no place"), not "any location" — matching it loosely pulled
+    // in every located post as well.
+    const locClause = loc
+      ? `AND ${BUCKET_KEY} = ?`
+      : `AND ${BUCKET_KEY} = ''`;
     const rows = await db.all(
       `SELECT p.id, p.content, p.image_url, p.created_at, p.user_id,
               pl.name AS place_name, pl.city AS place_city,
@@ -112,10 +127,11 @@ router.get('/:key/posts', auth, async (req, res) => {
          FROM posts p
     LEFT JOIN places pl ON pl.id = p.place_id
         WHERE p.user_id = ?
+          AND ${AGE_FILTER}
           AND strftime('%Y-%m', p.created_at) = ?
           ${locClause}
      ORDER BY p.created_at ASC`,
-      [req.user.id, ym, ...(loc ? [loc, loc] : [])]
+      [req.user.id, ym, ...(loc ? [loc] : [])]
     );
     res.json(rows);
   } catch (e) {

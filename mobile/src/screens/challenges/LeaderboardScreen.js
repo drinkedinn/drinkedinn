@@ -14,6 +14,7 @@ import { Screen, Header, Icon, EmptyState, FadeIn, useToast } from '../../compon
 import { Shimmer } from '../../components/ui/Skeleton';
 import track from '../../lib/track';
 import LeaderboardRow from '../../components/challenges/LeaderboardRow';
+import { navigateByName } from '../../lib/nav';
 
 function RowSkeleton() {
   const { t } = useTheme();
@@ -73,7 +74,7 @@ export default function LeaderboardScreen({ navigation, route }) {
   const openProfile = useCallback(
     (entry) => {
       if (!entry?.id) return;
-      if (entry.id === user?.id) navigation.navigate('Profile');
+      if (entry.id === user?.id) navigateByName(navigation, 'Profile');
       else navigation.navigate('User', { userId: entry.id });
     },
     [navigation, user?.id]

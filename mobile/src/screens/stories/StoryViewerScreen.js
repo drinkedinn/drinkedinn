@@ -32,6 +32,7 @@ import { groupStoriesByUser, timeAgoShort } from '../../components/stories/group
 import { markSeen } from '../../components/stories/seenStore';
 import { tap as tapHaptic } from '../../ui/haptics';
 import track from '../../lib/track';
+import { showReportSheet } from '../../lib/reportSheet';
 
 const STORY_MS = 5000;
 
@@ -227,15 +228,21 @@ export default function StoryViewerScreen({ navigation, route }) {
     Alert.alert(name, null, [
       {
         text: 'Report this moment',
-        onPress: () => {
-          Alert.alert("What's wrong with it?", null, [
-            { text: 'Encourages unsafe drinking', onPress: () => submitReport('unsafe_drinking') },
-            { text: 'Harassment or hate',         onPress: () => submitReport('harassment') },
-            { text: 'Spam or scam',               onPress: () => submitReport('spam') },
-            { text: 'Sexual or violent content',  onPress: () => submitReport('inappropriate') },
-            { text: 'Something else',             onPress: () => submitReport('other') },
-            { text: 'Cancel', style: 'cancel', onPress: () => resume() },
-          ]);
+        onPress: async () => {
+          // Six options do not fit an Android Alert — it keeps the first three
+          // and drops Cancel, leaving the reporter stuck. showReportSheet takes
+          // any number on both platforms.
+          const key = await showReportSheet({
+            title: "What's wrong with it?",
+            reasons: [
+              { key: 'unsafe_drinking', label: 'Encourages unsafe drinking' },
+              { key: 'harassment',      label: 'Harassment or hate' },
+              { key: 'spam',            label: 'Spam or scam' },
+              { key: 'inappropriate',   label: 'Sexual or violent content' },
+              { key: 'other',           label: 'Something else' },
+            ],
+          });
+          if (key) submitReport(key); else resume();
         },
       },
       {

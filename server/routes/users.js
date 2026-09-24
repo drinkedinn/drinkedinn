@@ -43,7 +43,7 @@ router.delete('/me', auth, async (req, res) => {
 
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -55,7 +55,7 @@ router.get('/me', auth, async (req, res) => {
 });
 
 router.put('/me', auth, async (req, res) => {
-  const { name, title, bio, avatar, drinks, onboarded } = req.body;
+  const { name, title, bio, avatar, drinks, onboarded, date_of_birth, country_code } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
   const drinksJson = typeof drinks === 'object' ? JSON.stringify(drinks) : (drinks || '{}');
   try {
@@ -63,7 +63,34 @@ router.put('/me', auth, async (req, res) => {
       'UPDATE users SET name = ?, title = ?, bio = ?, avatar = ?, drinks = ?, onboarded = ? WHERE id = ?',
       [name.trim(), title || '', bio || '', avatar || '', drinksJson, onboarded ? 1 : 0, req.user.id]
     );
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.user.id]);
+
+    // Date of birth and country drive the age gate and every jurisdiction
+    // decision, so they are WRITE-ONCE here: this fills them in for an account
+    // that has none (the onboarding flow collects them), and refuses to
+    // overwrite an existing value. Without that guard a member could raise
+    // their own age, or move themselves to a permissive market, with a profile
+    // edit. Changing either afterwards is a support action, not a PUT.
+    if (date_of_birth || country_code) {
+      const current = await db.get(
+        'SELECT date_of_birth, country_code FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      if (date_of_birth && !current?.date_of_birth) {
+        const d = new Date(date_of_birth);
+        if (!isNaN(d) && /^\d{4}-\d{2}-\d{2}$/.test(String(date_of_birth))) {
+          await db.run('UPDATE users SET date_of_birth = ? WHERE id = ? AND date_of_birth IS NULL',
+            [date_of_birth, req.user.id]);
+        }
+      }
+      if (country_code && !current?.country_code) {
+        const cc = String(country_code).toUpperCase();
+        if (/^[A-Z]{2}$/.test(cc)) {
+          await db.run('UPDATE users SET country_code = ? WHERE id = ? AND country_code IS NULL',
+            [cc, req.user.id]);
+        }
+      }
+    }
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;

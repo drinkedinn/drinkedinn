@@ -22,6 +22,7 @@ import { PostSkeleton } from '../../components/ui/Skeleton';
 import PostCard from '../../components/PostCard';
 import usePostActions from '../../hooks/usePostActions';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 // Case-insensitive, whitespace-tolerant grouping. "The Dead Rabbit" and
 // " the dead rabbit " belong together, but preserve the first-seen casing for
@@ -103,7 +104,7 @@ export default function TripsScreen({ navigation }) {
 
   const openPost = (post) => navigation.navigate('PostDetail', { post });
   const openProfile = (id) =>
-    id === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: id });
+    id === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: id });
 
   const totalPlaces = sections.length;
   const totalMoments = posts.length;

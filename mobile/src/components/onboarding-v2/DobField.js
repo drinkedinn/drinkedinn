@@ -14,6 +14,10 @@ import { View, Text, TextInput, StyleSheet, Platform } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { radius, type } from '../../theme/tokens';
 
+// 18 is the FLOOR, not the rule. The real minimum is per-country and lives on
+// the server (server/lib/jurisdictions.js — US 21, CA 19, JP/NO/SE 20, IN 25),
+// exposed by GET /auth/rules?country=XX. Callers pass the resolved minimum in;
+// this is only the fallback for when the rules call has not answered yet.
 const MIN_AGE = 18;
 const MAX_AGE = 120;
 
@@ -49,15 +53,15 @@ export function ageFromDob(dob) {
 }
 
 /** True once the entry is a real date belonging to someone old enough. */
-export function isOfAge(dob) {
+export function isOfAge(dob, minAge) {
   const age = ageFromDob(dob);
-  return age !== null && age >= MIN_AGE && age <= MAX_AGE;
+  return age !== null && age >= (minAge || MIN_AGE) && age <= MAX_AGE;
 }
 
 /** True only when the person has actively told us they are under 18. */
-export function isUnderAge(dob) {
+export function isUnderAge(dob, minAge) {
   const age = ageFromDob(dob);
-  return age !== null && age < MIN_AGE;
+  return age !== null && age < (minAge || MIN_AGE);
 }
 
 export { MIN_AGE };

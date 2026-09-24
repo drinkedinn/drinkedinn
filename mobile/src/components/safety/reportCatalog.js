@@ -38,7 +38,7 @@ export const AI_REASONS = [
 /** True for any reason the server will treat as a P0 child-safety report. */
 export const isChildSafetyReason = (key) => String(key || '').toLowerCase().startsWith('csae');
 
-export const SAFETY_EMAIL = 'safety@drinkedinn.com';
+export const SAFETY_EMAIL = 'childsafety@drinkedinn.com';
 
 /** Shown when a link or the mail app refuses to open — never leave a dead end. */
 export const SAFETY_EMAIL_HINT = `Could not open that. Write to ${SAFETY_EMAIL}.`;

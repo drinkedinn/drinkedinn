@@ -113,7 +113,7 @@ export default function TripsPillar({
             : 'The countries they’ve raised a glass in will show up here.'
         }
         actionLabel={isMe ? 'Find a place' : undefined}
-        onAction={isMe ? () => navigateByName(navigation, 'Discover') : undefined}
+        onAction={isMe ? () => navigateByName(navigation, 'Explore') : undefined}
       />
     );
   }

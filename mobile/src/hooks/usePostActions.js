@@ -8,6 +8,7 @@ import { Alert } from 'react-native';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
+import { showReportSheet } from '../lib/reportSheet';
 
 const REASONS = [
   { key: 'unsafe_drinking', label: 'Encourages unsafe drinking' },
@@ -65,11 +66,13 @@ export default function usePostActions({ onRemoved } = {}) {
   );
 
   const chooseReason = useCallback(
-    (post) => {
-      Alert.alert('Report this pour', 'What’s wrong with it?', [
-        ...REASONS.map((r) => ({ text: r.label, onPress: () => submitReport(post, r.key) })),
-        { text: 'Cancel', style: 'cancel' },
-      ]);
+    async (post) => {
+      // REASONS is spread into the button list, so this Alert had as many
+      // buttons as there are reasons plus Cancel. Android renders three and
+      // silently drops the rest — including Cancel — on the report menu that
+      // every post in the main feed uses.
+      const key = await showReportSheet({ title: 'Report this pour — what’s wrong with it?', reasons: REASONS });
+      if (key) submitReport(post, key);
     },
     [submitReport]
   );

@@ -20,6 +20,7 @@ import GroupPostCard from '../../components/groups/GroupPostCard';
 import GroupComposer from '../../components/groups/GroupComposer';
 import useGroupPostActions from '../../components/groups/useGroupPostActions';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 function memberLabel(n) {
   const c = Number(n) || 0;
@@ -212,7 +213,7 @@ export default function GroupDetailScreen({ navigation, route }) {
   const openProfile = useCallback(
     (id) => {
       if (!id) return;
-      if (id === user?.id) navigation.navigate('Profile');
+      if (id === user?.id) navigateByName(navigation, 'Profile');
       else navigation.navigate('User', { userId: id });
     },
     [navigation, user?.id]

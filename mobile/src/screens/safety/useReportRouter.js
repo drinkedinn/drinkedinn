@@ -48,7 +48,7 @@ export default function useReportRouter(navigation) {
           break;
         case 'person':
           hint('Find the person, open their profile, then tap the options button.');
-          navigation.navigate('Tabs', { screen: 'Discover' });
+          navigation.navigate('Tabs', { screen: 'Explore' });
           break;
         case 'message':
           hint('Open the conversation, then tap the options button.');

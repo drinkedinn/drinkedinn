@@ -105,7 +105,7 @@ export default function TaggedPillar({
   const openPost = (post) => navigateByName(navigation, 'PostDetail', { post: { id: post?.id } });
   const openProfile = (id) => {
     if (id == null) return;
-    if (meId != null && String(id) === String(meId)) navigateByName(navigation, 'Account');
+    if (meId != null && String(id) === String(meId)) navigateByName(navigation, 'Profile');
     else navigateByName(navigation, 'User', { userId: id });
   };
 
@@ -126,7 +126,7 @@ export default function TaggedPillar({
             : 'Moments other people mention them in will show up here.'
         }
         actionLabel={isMe ? 'Find people' : undefined}
-        onAction={isMe ? () => navigateByName(navigation, 'Discover') : undefined}
+        onAction={isMe ? () => navigateByName(navigation, 'Explore') : undefined}
       />
     );
   }

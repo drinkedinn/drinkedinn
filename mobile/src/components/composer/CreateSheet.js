@@ -30,6 +30,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContext } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import { radius, type } from '../../theme/tokens';
 import { useToast } from '../ui';
 import { track } from '../../lib/track';
@@ -144,9 +145,21 @@ function CreateSheetHost() {
   const { t } = useTheme();
   const toast = useToast();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const [visible, setVisible] = useState(false);
   const [sheet, setSheet] = useState({ title: DEFAULT_TITLE, actions: CREATE_ACTIONS });
+
+  // A signed-out session must not leave a create sheet floating over the auth
+  // screen. The host owns its own `visible` state, so nothing else can clear it.
+  useEffect(() => {
+    if (!user && visible) {
+      setVisible(false);
+      const r = currentResolve;
+      currentResolve = null;
+      r?.(null);
+    }
+  }, [user, visible]);
 
   const translateY = useRef(new Animated.Value(TRAVEL)).current;
   const opacity = useRef(new Animated.Value(0)).current;

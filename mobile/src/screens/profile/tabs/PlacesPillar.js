@@ -138,7 +138,7 @@ export default function PlacesPillar({
             : 'The places they’ve been will show up here.'
         }
         actionLabel={isMe ? 'Find a place' : undefined}
-        onAction={isMe ? () => navigateByName(navigation, 'Discover') : undefined}
+        onAction={isMe ? () => navigateByName(navigation, 'Explore') : undefined}
       />
     );
   }

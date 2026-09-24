@@ -21,6 +21,7 @@ import UnreadBadge from '../../components/messages/UnreadBadge';
 import useUnreadMessages from '../../components/messages/useUnreadMessages';
 import { timeAgoShort } from './timeAgo';
 import track from '../../lib/track';
+import { navigateByName } from '../../lib/nav';
 
 function RowSkeleton() {
   const { t } = useTheme();
@@ -165,7 +166,7 @@ export default function ConversationsScreen({ navigation }) {
         border={false}
         right={
           <Bounce
-            onPress={() => navigation.navigate('Explore')}
+            onPress={() => navigateByName(navigation, 'Explore')}
             haptic="light"
             style={[styles.headerBtn, { backgroundColor: t.surfaceAlt }]}
             accessibilityLabel="Find someone to message"
@@ -213,7 +214,7 @@ export default function ConversationsScreen({ navigation }) {
                 title="Your table's set for two"
                 body="Open someone's profile and send the first note. Good conversations start somewhere."
                 actionLabel="Find people"
-                onAction={() => navigation.navigate('Explore')}
+                onAction={() => navigateByName(navigation, 'Explore')}
               />
             )
           }

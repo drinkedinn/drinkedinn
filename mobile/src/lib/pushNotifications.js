@@ -109,12 +109,12 @@ export function attachTapHandler(navigationRef) {
     try {
       if (data.type === 'comment' || data.type === 'cheer' || data.type === 'repour') {
         if (data.postId) nav.navigate('PostDetail', { post: { id: Number(data.postId) } });
-        else nav.navigate('Tabs', { screen: 'Activity' });
+        else nav.navigate('Tabs', { screen: 'Home' });
       } else if (data.type === 'connect' || data.type === 'follow') {
         if (data.actorId) nav.navigate('User', { userId: Number(data.actorId) });
-        else nav.navigate('Tabs', { screen: 'Activity' });
+        else nav.navigate('Tabs', { screen: 'Home' });
       } else {
-        nav.navigate('Tabs', { screen: 'Activity' });
+        nav.navigate('Tabs', { screen: 'Home' });
       }
     } catch {
       /* a bad payload must never crash the app on launch */

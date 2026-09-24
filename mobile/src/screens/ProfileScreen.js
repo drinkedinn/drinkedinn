@@ -3,7 +3,7 @@
 // the user's bar (collection), and earned badges.
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Share } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, ActivityIndicator, Pressable, Share, RefreshControl } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -15,6 +15,7 @@ import { Screen, Icon, Avatar, Bounce, Button, EmptyState, FadeIn, useToast } fr
 import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
 import ProfilePillars from './profile';
+import { navigateByName } from '../lib/nav';
 
 
 function Stat({ value, label }) {
@@ -38,6 +39,7 @@ export default function ProfileScreen({ navigation, route }) {
   const [profile, setProfile] = useState(null);
   const [connected, setConnected] = useState(false);
   const pillarsRef = useRef(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('pours');
   const [bar, setBar] = useState(null);
@@ -54,6 +56,22 @@ export default function ProfileScreen({ navigation, route }) {
       setLoading(false);
     }
   }, [targetId]);
+
+  // The FlatList -> ScrollView swap (needed because ProfilePillars must not be
+  // nested inside another VirtualizedList) dropped pull-to-refresh with it, and
+  // left pillarsRef attached but never called. Refresh both the identity header
+  // and whichever pillar is open.
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        load(),
+        Promise.resolve(pillarsRef.current?.refresh?.()),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [load]);
 
   useEffect(() => {
     load();
@@ -126,7 +144,7 @@ export default function ProfileScreen({ navigation, route }) {
           <Icon name="share-outline" size={18} color={t.text} />
         </Bounce>
         {isMe && (
-          <Bounce onPress={() => navigation.navigate('Profile')} haptic="light" style={[styles.circleBtn, { backgroundColor: t.surface, borderColor: t.border }]} accessibilityLabel="Settings">
+          <Bounce onPress={() => navigateByName(navigation, 'Profile')} haptic="light" style={[styles.circleBtn, { backgroundColor: t.surface, borderColor: t.border }]} accessibilityLabel="Settings">
             <Icon name="settings-outline" size={18} color={t.text} />
           </Bounce>
         )}
@@ -208,6 +226,14 @@ export default function ProfileScreen({ navigation, route }) {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 130 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={t.accent}
+            colors={[t.accent]}
+          />
+        }
       >
         {header}
         <ProfilePillars

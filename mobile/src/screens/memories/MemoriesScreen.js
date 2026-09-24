@@ -22,12 +22,17 @@ export default function MemoriesScreen({ navigation }) {
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  // A failed fetch is not an empty history. Without this the screen rendered
+  // "Nothing to look back on yet" to a member with real memories, with nothing
+  // to retry — the sibling MemoryDetailScreen already got this right.
+  const [failed, setFailed] = useState(false);
   const mounted = useRef(true);
 
   const load = useCallback(async () => {
     const res = await api.get('/memories');
     if (!mounted.current) return;
     setCards(normalizeCards(res?.data));
+    setFailed(false);
   }, []);
 
   useEffect(() => {
@@ -37,6 +42,7 @@ export default function MemoriesScreen({ navigation }) {
         await load();
         track('memories_list_opened');
       } catch (e) {
+        if (mounted.current) setFailed(true);
         toast?.show(e?.safeMessage || 'Could not load your memories.', 'error');
       } finally {
         if (mounted.current) setLoading(false);
@@ -101,13 +107,23 @@ export default function MemoriesScreen({ navigation }) {
             />
           }
           ListEmptyComponent={
-            <EmptyState
-              icon={MEMORY_ICON}
-              title="Nothing to look back on yet"
-              body="Share a few moments with the people you're out with. In a month or so, the nights worth remembering will gather here."
-              actionLabel="Share a moment"
-              onAction={() => navigation.navigate('Compose')}
-            />
+            failed ? (
+              <EmptyState
+                icon="cloud-offline-outline"
+                title="Couldn't load your memories"
+                body="That's on us, not you. Check your connection and try again."
+                actionLabel="Try again"
+                onAction={onRefresh}
+              />
+            ) : (
+              <EmptyState
+                icon={MEMORY_ICON}
+                title="Nothing to look back on yet"
+                body="Share a few moments with the people you're out with. In a month or so, the nights worth remembering will gather here."
+                actionLabel="Share a moment"
+                onAction={() => navigation.navigate('Compose')}
+              />
+            )
           }
           ListFooterComponent={
             count > 0 ? (

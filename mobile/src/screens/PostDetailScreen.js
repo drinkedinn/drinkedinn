@@ -14,6 +14,7 @@ import { radius, type } from '../theme/tokens';
 import { Screen, Header, Icon, Avatar, Bounce, EmptyState, FadeIn, useToast } from '../components/ui';
 import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
+import { navigateByName } from '../lib/nav';
 
 function timeAgo(ts) {
   if (!ts) return '';
@@ -176,7 +177,7 @@ export default function PostDetailScreen({ navigation, route }) {
                     post={post}
                     onOpen={() => {}}
                     onProfile={(uid) =>
-                      uid === user?.id ? navigation.navigate('Profile') : navigation.navigate('User', { userId: uid })
+                      uid === user?.id ? navigateByName(navigation, 'Profile') : navigation.navigate('User', { userId: uid })
                     }
                   />
                 )}
@@ -194,7 +195,7 @@ export default function PostDetailScreen({ navigation, route }) {
                     scaleTo={0.97}
                     onPress={() =>
                       item.user_id === user?.id
-                        ? navigation.navigate('Profile')
+                        ? navigateByName(navigation, 'Profile')
                         : item.user_id && navigation.navigate('User', { userId: item.user_id })
                     }
                   >

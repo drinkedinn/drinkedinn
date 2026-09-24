@@ -80,7 +80,19 @@ export default function TabBar({ state, navigation, unreadCount = 0 }) {
         <View style={styles.side}>
           {left.map((r) => {
             const i = state.routes.indexOf(r);
-            return <Tab key={r.key} routeName={r.name} focused={state.index === i} onPress={() => go(r, state.index === i)} />;
+            return (
+              <Tab
+                key={r.key}
+                routeName={r.name}
+                focused={state.index === i}
+                onPress={() => go(r, state.index === i)}
+                // Activity lost its tab to Places, so its unread badge moved to
+                // Home — which is where the Activity bell now lives, in the
+                // header. Home sits in the left slice, so the badge has to be
+                // passed here as well as on the right.
+                badge={r.name === 'Home' ? unreadCount : 0}
+              />
+            );
           })}
         </View>
 
@@ -108,7 +120,7 @@ export default function TabBar({ state, navigation, unreadCount = 0 }) {
                 routeName={r.name}
                 focused={state.index === i}
                 onPress={() => go(r, state.index === i)}
-                badge={0}
+                badge={r.name === 'Home' ? unreadCount : 0}
               />
             );
           })}

@@ -52,7 +52,7 @@ const TABS = [
 // unhandled navigation action.
 const ROUTES = {
   profile: ['User'],
-  self: ['Account'],
+  self: ['Profile', 'Account'],
   post: ['PostDetail'],
   place: ['Place', 'PlaceDetail', 'PlaceProfile', 'Trips'],
   groups: ['Groups'],
