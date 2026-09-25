@@ -42,19 +42,21 @@ router.post('/events', softAuth, async (req, res) => {
     countryOf(req, req.analyticsUser?.country_code)
   );
 
-  let accepted = 0;
-  for (const e of batch) {
-    if (!e?.name) continue;
-    const r = await analytics.track(e.name, {
+  // ONE round trip for the whole batch. This was a per-event await on
+  // analytics.track(), so a full 50-event batch cost 51 subrequests against a
+  // Cloudflare cap of 50 — the endpoint's own MAX_BATCH made it unable to
+  // accept a full batch. Validation still happens per event, in process.
+  const { accepted } = await analytics.trackMany(
+    batch.map((e) => ({
+      name: e?.name,
       userId: req.analyticsUser?.id || null,
-      anonId: e.anonId || req.body.anonId || null,
-      props: e.props || null,
-      platform: e.platform || req.body.platform || null,
+      anonId: e?.anonId || req.body.anonId || null,
+      props: e?.props || null,
+      platform: e?.platform || req.body.platform || null,
       country,
-      sessionId: e.sessionId || req.body.sessionId || null,
-    });
-    if (r.ok) accepted += 1;
-  }
+      sessionId: e?.sessionId || req.body.sessionId || null,
+    }))
+  );
   // 200 regardless — a rejected event must never look like a failure worth retrying.
   res.json({ accepted, received: batch.length });
 });

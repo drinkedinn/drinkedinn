@@ -191,7 +191,13 @@ function createApp({ isWorker = IS_WORKER } = {}) {
 
   // /api/trips is an alias — same handler as /api/places/trips-summary.
   // Keeps a clean public URL for the Trips tab in the mobile app.
-  app.get('/api/trips', require('./middleware/auth'), async (req, res, next) => {
+  //
+  // No auth middleware HERE on purpose. Re-dispatching into the places router
+  // re-runs that router's own `auth` on /trips-summary, so mounting it here as
+  // well made every /api/trips request pay requireAuth twice — two identical
+  // SELECTs on users, measured as 63 subrequests against 62 for the direct
+  // route. The alias is still authenticated, by the route it dispatches to.
+  app.get('/api/trips', async (req, res, next) => {
     req.url = '/trips-summary';
     return require('./routes/places').handle(req, res, next);
   });

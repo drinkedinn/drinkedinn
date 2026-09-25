@@ -9,6 +9,10 @@ const analytics = require('../lib/analytics');
 
 const router = express.Router();
 
+// A poll with more options than this is a mistake or an abuse, not a poll.
+// Enforced at write time because poll_options is client-supplied.
+const MAX_POLL_OPTIONS = 10;
+
 const POST_QUERY = (extra = '') => `
   SELECT p.*, u.name, u.title, u.avatar, u.verified, u.premium, u.badge,
     (SELECT COUNT(*) FROM cheers WHERE post_id = p.id) as cheer_count,
@@ -144,9 +148,22 @@ router.post('/', auth, async (req, res) => {
       [req.user.id, content.trim(), drink || '🥃', location || '', lat || null, lng || null, image_url || '', hasPoll ? 1 : 0]
     );
     if (hasPoll) {
-      for (const opt of poll_options.filter(o => o?.trim())) {
-        await db.run('INSERT INTO poll_options (post_id, text) VALUES (?, ?)', [lastInsertRowid, opt.trim()]);
-      }
+      // One batch, not one round trip per option.
+      //
+      // poll_options comes straight from the client and was never length
+      // checked, so the loop that used to live here issued one INSERT per
+      // option: a 60-option poll measured 66 subrequests and blew the
+      // Cloudflare cap (50) on its own, failing the whole post. db.batch is a
+      // single subrequest however many statements it carries, and MAX_POLL_OPTIONS
+      // is the product bound on top of that.
+      const opts = poll_options
+        .filter((o) => o?.trim())
+        .slice(0, MAX_POLL_OPTIONS)
+        .map((o) => o.trim());
+      await db.batch(opts.map((text) => ({
+        sql: 'INSERT INTO poll_options (post_id, text) VALUES (?, ?)',
+        args: [lastInsertRowid, text],
+      })));
     }
     await bumpStreak(req.user.id, 'post');
     analytics.track('post_created', { userId: req.user.id, props: { has_image: !!image_url, has_poll: hasPoll, drink: drink || '' } });

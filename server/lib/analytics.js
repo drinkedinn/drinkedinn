@@ -92,6 +92,52 @@ async function track(name, { userId = null, anonId = null, props = null, platfor
   }
 }
 
+/**
+ * Ingest a batch of events in ONE round trip.
+ *
+ * track() writes immediately, which is right for a single call from a handler
+ * but wrong for the batch endpoint: POST /api/analytics/events accepts up to
+ * MAX_BATCH (50) events and used to await track() per event, so a full batch
+ * cost 51 subrequests — one MORE than a Cloudflare Workers invocation is
+ * allowed (measured: 51). The ingest endpoint could never accept a full batch.
+ *
+ * Validation is unchanged and still per-event: unknown names and bad props are
+ * dropped here, in process, for free. Only the surviving rows go to the
+ * database, as a single db.batch.
+ */
+async function trackMany(events) {
+  const rows = [];
+  let rejected = 0;
+
+  for (const e of events || []) {
+    if (!e?.name || !KNOWN.has(e.name)) { rejected += 1; continue; }
+    rows.push({
+      sql: `INSERT INTO analytics_events (user_id, anon_id, name, props, platform, country_code, session_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      args: [
+        e.userId ?? null,
+        e.anonId ? String(e.anonId).slice(0, 64) : null,
+        e.name,
+        cleanProps(e.name, e.props),
+        e.platform ? String(e.platform).slice(0, 16) : null,
+        e.country ? String(e.country).toUpperCase().slice(0, 2) : null,
+        e.sessionId ? String(e.sessionId).slice(0, 64) : null,
+        Date.now(),
+      ],
+    });
+  }
+
+  if (!rows.length) return { accepted: 0, rejected };
+
+  try {
+    await db.batch(rows);
+    return { accepted: rows.length, rejected };
+  } catch (err) {
+    console.error('[analytics] batch failed', err.message);
+    return { accepted: 0, rejected: rejected + rows.length };
+  }
+}
+
 const DAY = 86400000;
 
 /** Distinct users active in the last N days. */
@@ -205,6 +251,6 @@ async function dailySeries(days = 30) {
 }
 
 module.exports = {
-  track, activeUsers, retention, funnel, featureUsage, dailySeries,
+  track, trackMany, activeUsers, retention, funnel, featureUsage, dailySeries,
   KNOWN_EVENTS: Array.from(KNOWN),
 };

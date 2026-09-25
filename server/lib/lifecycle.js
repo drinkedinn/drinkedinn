@@ -15,6 +15,21 @@ const { sendDigestEmail } = require('./mailer');
 const MILESTONES = new Set([1, 3, 7, 14, 30]); // days inactive that trigger an email
 const MAX_PER_RUN = 200;                         // cap per cron run (serverless + SMTP safety)
 
+// Cloudflare Workers allows 50 subrequests per invocation, and each user who
+// actually reaches buildDigest costs about four: two digest queries, one
+// outbound Resend call and one UPDATE. MAX_PER_RUN was written for a platform
+// with no such limit, so a full run needed ~801 — measured at 81 with only 40
+// users, already over. It failed partway through, having mailed some people
+// and not others.
+//
+// So the per-INVOCATION bound is separate from the per-RUN one. On Workers we
+// process a slice small enough to fit (1 scan + 10 x 4 = 41) and report
+// `remaining: true`; the caller invokes /api/jobs/lifecycle again until that
+// is false. Users already mailed have last_digest_date set, so the next
+// invocation's query naturally excludes them — the slicing needs no cursor.
+const IS_WORKER = typeof globalThis.WebSocketPair !== 'undefined';
+const MAX_PER_INVOCATION = IS_WORKER ? 10 : MAX_PER_RUN;
+
 function todayStr(now = new Date()) {
   return now.toISOString().slice(0, 10);
 }
@@ -115,13 +130,21 @@ async function runLifecycleEmails({ dryRun = false } = {}) {
   let skipped = 0;
   const details = [];
 
+  // Users that cost subrequests this invocation — i.e. reached buildDigest.
+  // Counted separately from `sent`, because a dry run never increments `sent`
+  // and so would otherwise walk all 2000 rows at two queries each.
+  let processed = 0;
+  let truncated = false;
+
   for (const u of users) {
     if (sent >= MAX_PER_RUN) break;
+    if (processed >= MAX_PER_INVOCATION) { truncated = true; break; }
 
     const sinceDate = u.last_active_date || u.created_at;
     const inactive = daysSince(u.last_active_date || u.created_at, now);
     if (inactive === null || !MILESTONES.has(inactive)) { skipped++; continue; }
 
+    processed++;
     const digest = await buildDigest(u, sinceDate);
     if (!digest) { skipped++; continue; }
 
@@ -144,7 +167,17 @@ async function runLifecycleEmails({ dryRun = false } = {}) {
     }
   }
 
-  return { scanned: users.length, sent: dryRun ? details.length : sent, skipped, dryRun, details };
+  // `remaining` tells the caller to invoke again. It is true only when the
+  // per-invocation bound actually stopped us, not merely when the scan was
+  // full — a scan can return 2000 rows of which none hit a milestone.
+  return {
+    scanned: users.length,
+    sent: dryRun ? details.length : sent,
+    skipped,
+    dryRun,
+    remaining: truncated,
+    details,
+  };
 }
 
 module.exports = { runLifecycleEmails };

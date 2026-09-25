@@ -37,25 +37,68 @@ function distanceKm(lat1, lng1, lat2, lng2) {
 
 // A place row for the client. Includes the current viewer's saved/visited state
 // so the UI doesn't have to make a second round trip for that.
+//
+// BATCHED ON PURPOSE. This was a per-place helper issuing three db.get calls,
+// used as `rows.map(decorate)` by five list routes. Promise.all made those
+// concurrent, which reads as "fast" and is beside the point: Cloudflare counts
+// every query against the 50-subrequest-per-invocation cap whether they run
+// concurrently or not. A LIMIT 50 list cost 1 + 3x50 = 151 subrequests and was
+// killed outright — measured at exactly 152 for GET /api/places. In practice
+// the Places pillar broke once roughly 17 places existed, and looked fine
+// before that only because the table was empty.
+//
+// These three queries cost 3 subrequests for any number of places.
+const DECORATE_CHUNK = 300;   // stay well under SQLite's 999-variable ceiling
+
+async function decorateAll(places, viewerId) {
+  const rows = (places || []).filter(Boolean);
+  if (!rows.length) return [];
+
+  const ids = [...new Set(rows.map((p) => p.id))];
+  const savedSet = new Set();
+  const visitMap = new Map();
+  const storyMap = new Map();
+
+  // Chunked because /saved and /visited have no LIMIT, so `ids` is only as
+  // bounded as the member's own history. Three queries per chunk keeps this
+  // flat at 3 for any realistic list and 9 even for 900 places.
+  for (let i = 0; i < ids.length; i += DECORATE_CHUNK) {
+    const slice = ids.slice(i, i + DECORATE_CHUNK);
+    const holes = slice.map(() => '?').join(',');
+
+    const [saved, visits, stories] = await Promise.all([
+      db.all(
+        `SELECT place_id FROM saved_places WHERE user_id = ? AND place_id IN (${holes})`,
+        [viewerId, ...slice]
+      ),
+      db.all(
+        `SELECT place_id, COUNT(*) AS c FROM place_visits WHERE place_id IN (${holes}) GROUP BY place_id`,
+        slice
+      ),
+      db.all(
+        `SELECT place_id, COUNT(*) AS c FROM posts WHERE place_id IN (${holes}) GROUP BY place_id`,
+        slice
+      ),
+    ]);
+
+    for (const r of saved) savedSet.add(r.place_id);
+    for (const r of visits) visitMap.set(r.place_id, Number(r.c));
+    for (const r of stories) storyMap.set(r.place_id, Number(r.c));
+  }
+
+  return rows.map((p) => ({
+    ...p,
+    saved: savedSet.has(p.id),
+    visit_count: visitMap.get(p.id) || 0,
+    story_count: storyMap.get(p.id) || 0,
+  }));
+}
+
+// Single-place convenience for the profile route, on the same three queries.
 async function decorate(place, viewerId) {
   if (!place) return null;
-  const [saved, visits, storiesRow] = await Promise.all([
-    db.get(
-      'SELECT 1 as x FROM saved_places WHERE user_id = ? AND place_id = ?',
-      [viewerId, place.id]
-    ),
-    db.get(
-      'SELECT COUNT(*) as c FROM place_visits WHERE place_id = ?',
-      [place.id]
-    ),
-    db.get('SELECT COUNT(*) as c FROM posts WHERE place_id = ?', [place.id]),
-  ]);
-  return {
-    ...place,
-    saved: !!saved,
-    visit_count: visits?.c || 0,
-    story_count: storiesRow?.c || 0,
-  };
+  const [one] = await decorateAll([place], viewerId);
+  return one || null;
 }
 
 // ── List / search ───────────────────────────────────────────────────────────
@@ -85,7 +128,7 @@ router.get('/', auth, async (req, res) => {
       `SELECT * FROM places ${where} ORDER BY created_at DESC LIMIT 50`,
       args
     );
-    const decorated = await Promise.all(rows.map((r) => decorate(r, req.user.id)));
+    const decorated = await decorateAll(rows, req.user.id);
     res.json(decorated);
   } catch (e) {
     console.error('[places] list', e.message);
@@ -119,7 +162,7 @@ router.get('/nearby', auth, async (req, res) => {
       .filter((r) => r.distance_km != null && r.distance_km <= radius)
       .sort((a, b) => a.distance_km - b.distance_km)
       .slice(0, 50);
-    const decorated = await Promise.all(withDist.map((r) => decorate(r, req.user.id)));
+    const decorated = await decorateAll(withDist, req.user.id);
     res.json(decorated);
   } catch (e) {
     console.error('[places] nearby', e.message);
@@ -139,7 +182,7 @@ router.get('/trending', auth, async (req, res) => {
      ORDER BY (recent_visits + recent_stories) DESC, p.created_at DESC
         LIMIT 30`
     );
-    const decorated = await Promise.all(rows.map((r) => decorate(r, req.user.id)));
+    const decorated = await decorateAll(rows, req.user.id);
     res.json(decorated.filter((r) => (r.visit_count + r.story_count) > 0));
   } catch (e) {
     console.error('[places] trending', e.message);
@@ -158,7 +201,7 @@ router.get('/saved', auth, async (req, res) => {
      ORDER BY sp.created_at DESC`,
       [req.user.id]
     );
-    const decorated = await Promise.all(rows.map((r) => decorate(r, req.user.id)));
+    const decorated = await decorateAll(rows, req.user.id);
     res.json(decorated);
   } catch (e) {
     console.error('[places] saved', e.message);
@@ -188,7 +231,7 @@ router.get('/visited', auth, async (req, res) => {
      ORDER BY last_visit DESC`,
       byCountry ? [req.user.id, country] : [req.user.id]
     );
-    const decorated = await Promise.all(rows.map((r) => decorate(r, req.user.id)));
+    const decorated = await decorateAll(rows, req.user.id);
     res.json(decorated);
   } catch (e) {
     console.error('[places] visited', e.message);
@@ -212,19 +255,28 @@ router.get('/trips-summary', auth, async (req, res) => {
      ORDER BY last_visit DESC`,
       [req.user.id]
     );
-    // Story counts joined per country by way of the visited places.
-    const withStories = await Promise.all(
-      rows.map(async (row) => {
-        const story = await db.get(
-          `SELECT COUNT(*) as c FROM posts po
-             JOIN places p ON p.id = po.place_id
-            WHERE po.user_id = ? AND p.country = ?`,
-          [req.user.id, row.country]
-        );
-        return { ...row, story_count: story?.c || 0 };
-      })
+    // Story counts for ALL countries in one query, then joined in memory.
+    //
+    // This was one db.get per country inside Promise.all. Concurrency does not
+    // help: Cloudflare counts each query against the 50-subrequest cap
+    // regardless. The grouping query above has no LIMIT and `country` is only
+    // validated as /^[A-Z]{2}$/ on write, so a member can mint far more
+    // distinct codes than there are real ISO ones — measured at 62
+    // subrequests with 60 countries, over the cap with room to spare.
+    const storyRows = await db.all(
+      `SELECT p.country AS country, COUNT(*) AS c
+         FROM posts po
+         JOIN places p ON p.id = po.place_id
+        WHERE po.user_id = ? AND p.country != ''
+     GROUP BY p.country`,
+      [req.user.id]
     );
-    res.json(withStories);
+    const storyByCountry = new Map(storyRows.map((r) => [r.country, Number(r.c)]));
+
+    res.json(rows.map((row) => ({
+      ...row,
+      story_count: storyByCountry.get(row.country) || 0,
+    })));
   } catch (e) {
     console.error('[places] trips-summary', e.message);
     res.status(500).json({ error: 'Could not load trips.' });
