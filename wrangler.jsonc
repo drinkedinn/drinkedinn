@@ -67,6 +67,18 @@
   //   "crons": ["0 16 * * *", "0 */4 * * *"]
   // },
 
+  // ── Custom domain ────────────────────────────────────────────────────
+  // Deliberately COMMENTED OUT. Uncommenting makes `wrangler deploy` try to
+  // attach the route, and the deploy FAILS if the token cannot edit the zone —
+  // so an unattended deploy would start breaking. Attach the domain in the
+  // dashboard first (Workers & Pages -> drinkedinn -> Settings -> Domains &
+  // Routes -> Add custom domain), then uncomment this so the binding is
+  // reproducible from the repo rather than existing only as dashboard state.
+  //
+  // "routes": [
+  //   { "pattern": "www.drinkedinn.com", "custom_domain": true }
+  // ],
+
   "vars": {
     "NODE_ENV": "production",
     "PUBLIC_BASE_URL": "https://www.drinkedinn.com",

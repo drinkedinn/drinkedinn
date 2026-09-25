@@ -253,6 +253,99 @@ the `triggers` block in `wrangler.jsonc`.
 
 ---
 
+## Leaving Vercel — the cutover
+
+The app is deployed to Workers, but `drinkedinn.com` still serves the old
+Vercel build. DNS is already in Cloudflare and proxied (`cf-ray` on every
+response); it is proxying *to* Vercel (`x-vercel-id`). So this is a routing
+change, not a migration.
+
+**Order matters.** Each step leaves the site working. Do not skip ahead — step
+3 points real traffic at the Worker, and a Worker with no secrets cannot
+authenticate anyone.
+
+### 1. Set the secrets (the Worker currently has none)
+
+`wrangler secret list` returns `[]` today. Three of the four values already
+exist in Vercel and must be REUSED:
+
+```bash
+npx vercel env pull .env.production   # gitignored; read the values, do not commit
+```
+
+| Secret | Where it comes from |
+|---|---|
+| `TURSO_DB_URL` | Copy from Vercel — a different database means an empty app |
+| `TURSO_DB_AUTH_TOKEN` | Copy from Vercel |
+| `JWT_SECRET` | Copy from Vercel to keep everyone signed in; a new one logs every session out |
+| `PASSWORD_PEPPER` | **Generate new.** It does not exist in Vercel |
+
+A new pepper is safe: production passwords are bcrypt from before the pepper
+existed, and `lib/password.js` checks for legacy bcrypt *first* and compares
+without the pepper. Existing logins keep working and upgrade to peppered
+PBKDF2 on next sign-in. Store the value somewhere permanent — losing it makes
+every password hashed after that point unverifiable.
+
+```bash
+export PATH="/opt/homebrew/opt/node@22/bin:$PATH"
+npx wrangler secret put TURSO_DB_URL
+npx wrangler secret put TURSO_DB_AUTH_TOKEN
+npx wrangler secret put JWT_SECRET
+npx wrangler secret put PASSWORD_PEPPER
+```
+
+### 2. Prove the Worker actually works before sending traffic to it
+
+```bash
+curl https://drinkedinn.madasales15.workers.dev/api/health
+```
+
+Must report `"status":"ok"` and `"db":"ok"`. While it says `degraded`, the
+secrets are not right and the cutover would take the site down.
+
+Then sign in against the workers.dev URL with a real account. If that fails,
+stop — the domain change will not fix it.
+
+### 3. Point the domain at the Worker
+
+**Workers & Pages → drinkedinn → Settings → Domains & Routes → Add custom
+domain** → `www.drinkedinn.com`. Cloudflare rewrites the DNS record itself.
+
+Add a redirect rule sending the bare domain to `www` (Rules → Redirect Rules,
+301, preserving path and query). The apex must not serve the app directly: a
+307 across hosts drops the `Authorization` header, which is the reason the web
+client is pinned to `www`.
+
+Then uncomment the `routes` block in `wrangler.jsonc` so the binding lives in
+the repo rather than only in dashboard state.
+
+### 4. Point the mobile app back at the domain
+
+`mobile/src/api.js` targets the workers.dev URL. Once the domain serves the
+Worker, change `ORIGIN` back to `https://www.drinkedinn.com` — one line, and
+the comment above it explains why it was moved.
+
+### 5. Disconnect Vercel
+
+Three Vercel projects are still attached to the GitHub repo and **fail on
+every push**: `drinkeden`, `drinkedinn`, `drinkedinn-rk24`. Red checks that
+never mean anything train you to ignore the ones that do.
+
+Vercel dashboard → each project → Settings → Git → Disconnect. Keep the
+projects for a week in case of rollback, then delete them.
+
+Do NOT delete the Turso database — the Worker uses the same one.
+
+### What breaks if you do this out of order
+
+- Domain before secrets → the site 401s every authenticated request
+- New `JWT_SECRET` → everyone is signed out (annoying, not damaging)
+- New `TURSO_DB_URL` → an empty app; the real data is still in the old database
+- Apex serving the app directly → `Authorization` dropped on redirect, endless
+  sign-in loop
+
+---
+
 ## Rollback
 
 Deployments are versioned:
