@@ -124,11 +124,22 @@ export default function useExploreData() {
       return listOf(res).slice().sort(byStoryCount).slice(0, PLACE_LIMIT);
     };
 
-    const [nextScope, nextNearby] = // Do NOT block first paint on these. The load-bearing /posts has already
-      // returned by here; a slow /places/visited used to keep the whole screen
-      // in skeleton. Each section hides itself while empty, so they can fill in
-      // late.
-      Promise.all([resolveScope(), resolveNearby()]).catch(() => {});
+    // Do NOT block first paint on these two. The load-bearing /posts has
+    // already returned by here; awaiting a slow /places/visited used to keep
+    // the whole screen in skeleton. Each section hides itself while empty, so
+    // they can land late and fill in.
+    //
+    // They must be consumed in a .then — an earlier attempt dropped the await
+    // but left `const [a, b] =` in front of the Promise, which destructures a
+    // Promise as an array. Hermes reports that as "iterator method is not
+    // callable", and it threw on every Explore open.
+    Promise.all([resolveScope(), resolveNearby()])
+      .then(([nextScope, nextNearby]) => {
+        if (!alive.current) return;
+        setScope(nextScope);
+        setNearbyPlaces(Array.isArray(nextNearby) ? nextNearby : []);
+      })
+      .catch(() => { /* both resolvers already swallow their own failures */ });
 
     if (!alive.current) return;
 
@@ -140,8 +151,7 @@ export default function useExploreData() {
     setPeople(
       listOf(peopleRes).filter((p) => p?.id !== viewerId && visible(p)).slice(0, PEOPLE_LIMIT)
     );
-    setScope(nextScope);
-    setNearbyPlaces(nextNearby);
+
     setError(failure);
   }, [viewerId, user?.home_city, visible, authorVisible]);
 
