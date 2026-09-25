@@ -47,7 +47,20 @@ const hideBlocked = async (viewerId, rows) =>
 
 router.get('/', auth, async (req, res) => {
   try {
-    const posts = await db.all(POST_QUERY('ORDER BY p.created_at DESC LIMIT 80'), [req.user.id, req.user.id, req.user.id]);
+    // ?scope=following restricts the list to accounts the viewer follows, plus
+    // their own posts. Without it the client could only filter the page it had
+    // already been given, so a Following tab showed whatever the last 80 posts
+    // happened to contain — populated for someone following nobody, and
+    // missing people they do follow who had not posted recently.
+    const following = String(req.query.scope || '') === 'following';
+    const extra = following
+      ? `WHERE (p.user_id = ? OR p.user_id IN (SELECT target_id FROM connections WHERE user_id = ?))
+         ORDER BY p.created_at DESC LIMIT 80`
+      : 'ORDER BY p.created_at DESC LIMIT 80';
+    const args = following
+      ? [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
+      : [req.user.id, req.user.id, req.user.id];
+    const posts = await db.all(POST_QUERY(extra), args);
     const blocked = await blockedIds(req.user.id);
     res.json(filterBlocked(posts, blocked).slice(0, 50));
   } catch (err) {

@@ -37,6 +37,7 @@ export default function FeedScreen({ navigation }) {
   const toast = useToast();
 
   const [tab, setTab] = useState('for-you');
+  const tabRef = useRef('for-you');
   const [posts, setPosts] = useState([]);
   const [rankedIds, setRankedIds] = useState(null);
   const [potdId, setPotdId] = useState(null);
@@ -53,9 +54,15 @@ export default function FeedScreen({ navigation }) {
   useScrollToTop(listRef);
 
   const fetchAll = useCallback(async () => {
+    // The Following tab asks the SERVER for a following feed. It used to fetch
+    // /posts (everyone) and filter the page client-side on user_connected,
+    // which meant "Following" was a view over whatever the last 80 posts
+    // happened to contain — someone following nobody still saw a populated
+    // tab, and someone following 50 people saw only those among the recent 80.
+    const following = tabRef.current === 'following';
     const [postsRes, feedRes, peopleRes] = await Promise.allSettled([
-      api.get('/posts'),
-      api.get('/feed?page=0'),
+      api.get(following ? '/posts?scope=following' : '/posts'),
+      api.get(following ? '/feed?page=0&mode=following' : '/feed?page=0'),
       api.get('/users/discover'),
     ]);
 
@@ -109,6 +116,9 @@ export default function FeedScreen({ navigation }) {
 
   // Order: server ranking for "For you", chronological for "Following".
   const ordered = useMemo(() => {
+    // The server has already scoped this list. The filter stays only as a
+    // belt-and-braces for a server that has not been redeployed yet — it can
+    // narrow, never widen.
     if (tab === 'following') return posts.filter((p) => p.user_connected > 0 || p.user_id === user?.id);
     if (!rankedIds?.length) return posts;
     const byId = new Map(posts.map((p) => [p.id, p]));
@@ -202,7 +212,7 @@ export default function FeedScreen({ navigation }) {
                 onOpenProfile={openProfile}
               />
               <View style={{ marginBottom: 16 }}>
-                <Segmented options={TABS} value={tab} onChange={(k) => { setTab(k); setVisibleCount(PAGE); }} />
+                <Segmented options={TABS} value={tab} onChange={(k) => { setTab(k); tabRef.current = k; setVisibleCount(PAGE); setLoading(true); fetchAll().finally(() => setLoading(false)); }} />
               </View>
               <PourOfTheDay onOpen={openPost} />
             </View>

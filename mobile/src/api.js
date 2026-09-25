@@ -43,9 +43,22 @@ const api = axios.create({
 let onUnauthorized = null;
 export function setUnauthorizedHandler(fn) { onUnauthorized = fn; }
 
+// Plain HTTP is permitted ONLY for a development server on the local network,
+// and only in a development build. Three conditions all have to hold, so this
+// cannot be reached from a release build or pointed at the open internet:
+//   1. __DEV__ is true (stripped from any production bundle),
+//   2. the host is localhost or an RFC-1918 private address,
+//   3. the scheme is http on that host specifically.
+// Anything else keeps the original behaviour: HTTPS or the request is cancelled.
+const PRIVATE_HOST = /^https?:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?(\/|$)/;
+
+function isAllowedInsecure(url) {
+  return typeof __DEV__ !== 'undefined' && __DEV__ && PRIVATE_HOST.test(url);
+}
+
 api.interceptors.request.use(async (config) => {
   const url = `${config.baseURL || ''}${config.url || ''}`;
-  if (!url.startsWith('https://')) {
+  if (!url.startsWith('https://') && !isAllowedInsecure(url)) {
     throw new axios.Cancel('Blocked insecure request');
   }
   const token = await secureStore.getToken();
