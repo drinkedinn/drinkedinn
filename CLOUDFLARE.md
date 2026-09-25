@@ -224,9 +224,115 @@ may exceed the free-tier CPU limit. If it does, reset the password instead.
 |---|---|
 | Requests | 100,000/day |
 | CPU per invocation | 10ms |
+| **Subrequests per invocation** | **50** |
 | Worker size | 3MB compressed (this bundle: ~1MB) |
 
+The subrequest cap is the one that actually bit us, and it is the least
+obvious, so it gets its own section below.
+
+## The 50-subrequest cap, and why the database schema is applied by hand
+
+**Every database query is a subrequest.** Turso is reached over HTTP, so
+`db.get`, `db.all`, `db.run` and `db.exec` each cost one of the 50 an
+invocation is allowed. (`db.exec` uses `executeMultiple`, so an entire
+multi-statement SQL string costs one — that distinction matters a lot below.)
+Outbound `fetch` — Resend, webhooks, LLM providers — also counts. The R2
+binding does **not**; it is a native binding, not HTTP.
+
+Exceeding the cap throws:
+
+```
+Too many subrequests by single Worker invocation.
+```
+
+### What this broke
+
+`server/worker.js` used to call `db.init()` on the first request of each
+isolate, reasoning that `CREATE TABLE IF NOT EXISTS` is free to repeat. On Node
+it is. Here, a full `init()` measures **76 subrequests** — 70 `executeMultiple`
+plus 6 `execute`. Most of that is the migrations loop, which runs
+`await exec(sql)` once per `ALTER TABLE` because each one needs its own
+try/catch to swallow "duplicate column". That is 43 separate round trips that
+cannot be merged into one `executeMultiple` without losing the per-statement
+error handling that makes them idempotent.
+
+So `init()` was killed 26 statements short on every cold isolate. Two
+consequences, the second much worse than the first:
+
+1. **The schema was left half-applied.** `places` and `admin_roles` (early,
+   inside a batched block) existed. `blocked_users`, `age_checks`,
+   `analytics_events`, `device_tokens`, `error_reports` and `error_occurrences`
+   (later) did not — so the block feature, which Google Play requires of any
+   UGC app, returned 500.
+
+2. **It ran before the route handler and spent the entire budget.** The failure
+   was caught and logged, so the request continued — with zero subrequests
+   left. Every `/api` call then died on its first real query. The symptom was a
+   database that looked completely down, while `/api/health?deep=0`, which
+   touches nothing, cheerfully returned 200. Nothing in the error pointed at
+   the real cause.
+
+### How it works now
+
+The Worker never runs DDL. Schema is applied deliberately, from Node, where no
+such limit exists:
+
+```bash
+node scripts/sync-schema.js           # dry run — print the plan, change nothing
+node scripts/sync-schema.js --apply   # execute it
+```
+
+That script does **not** simply call `init()`, because `init()` is not only
+DDL. It also loops every user forcing `onboarded = 1` and overwriting the
+`drinks` column with a canned demo preset, and it seeds demo groups,
+challenges and private messages — and only the first of those seed blocks
+honours `SKIP_DEMO_SEED`. Instead it builds the canonical schema in a throwaway
+local database, diffs it against the target, and applies only the additive
+difference (`CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE ADD COLUMN`). It
+asserts row counts are unchanged before and after, and exits non-zero if they
+move.
+
+**Run it before any deploy that adds a table or column.** Nothing else will.
+
+### Writing handlers that stay under the cap
+
+Fifty is generous for a normal request and very tight for a loop. The shape to
+avoid is one query per row:
+
+```js
+for (const row of rows) await db.run('...', [row.id]);   // N subrequests
+```
+
+Prefer a single statement with `IN (...)`, a JOIN, or a subselect. Where a loop
+is unavoidable, bound it explicitly with a `LIMIT` well under 45 and remember
+the fixed cost every authenticated request already pays in middleware before
+the handler body starts.
+
 ## Scheduled jobs
+
+**The lifecycle digest must be called in a loop until it says it is done.**
+
+`GET /api/jobs/lifecycle` no longer processes every eligible member in one
+call. It cannot: each member who receives a digest costs about four
+subrequests (two digest queries, one Resend call, one UPDATE), and an
+invocation only gets 50. The old behaviour needed ~801 and died partway
+through, having mailed some people and not others.
+
+It now processes 10 members per invocation on Workers and returns
+`remaining: true` when it stopped early. Keep calling until that is false:
+
+```bash
+while true; do
+  r=$(curl -s "https://www.drinkedinn.com/api/jobs/lifecycle?key=$CRON_SECRET")
+  echo "$r"
+  [ "$(echo "$r" | jq -r .remaining)" = "true" ] || break
+done
+```
+
+No cursor is needed — a member who has been mailed gets `last_digest_date` set,
+and the next invocation's query excludes them.
+
+
 
 **Cron triggers are disabled.** The Workers free plan allows 5 per *account*,
 and this account already uses them on other Workers. Attempting to add more
