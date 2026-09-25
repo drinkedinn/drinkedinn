@@ -1,6 +1,9 @@
 {
   "name": "drinkedinn-client",
   "version": "1.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite --port 3000",
