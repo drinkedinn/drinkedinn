@@ -1,0 +1,49 @@
+name: Tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  server:
+    name: Server tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        working-directory: server
+        run: npm ci --no-audit --no-fund
+
+      - name: Run tests
+        working-directory: server
+        # JWT_SECRET is required at boot by config.js. This is a throwaway CI
+        # value — the real secret lives only in the deployment environment.
+        env:
+          JWT_SECRET: ci-only-secret-value-at-least-32-characters
+        run: npm test
+
+  build:
+    name: Client build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install
+        working-directory: client
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        working-directory: client
+        run: npx vite build

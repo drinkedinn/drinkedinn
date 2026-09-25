@@ -27,6 +27,8 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
   const [connected, setConnected] = useState(!!initial.user_connected);
   const [connecting, setConnecting] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [reported, setReported] = useState(false);
 
   // 3D tilt on hover
   const cardRef = useRef(null);
@@ -99,6 +101,14 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
     onDelete?.(post.id);
   };
 
+  const reportPost = async (reason) => {
+    try {
+      await api.post('/reports', { target_type: 'post', target_id: post.id, reason });
+      setReported(true);
+      setShowMenu(false);
+    } catch {}
+  };
+
   const isOwn = user?.id === post.user_id;
 
   return (
@@ -125,7 +135,9 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
               onMouseEnter={e => e.target.style.color = t.accent}
               onMouseLeave={e => e.target.style.color = t.text}
             >{post.name}</span>
-            <span style={{ fontSize: 13, color: t.link }}>✓</span>
+            {post.verified ? <span title="Verified" style={{ fontSize: 13, color: t.link }}>✓</span> : null}
+            {post.premium ? <span title="Premium" style={{ fontSize: 11 }}>⭐</span> : null}
+            {post.badge ? <span style={{ fontSize: 12 }}>{post.badge}</span> : null}
           </div>
           <div style={{ color: t.textMuted, fontSize: 12, marginTop: 1 }}>{post.title}</div>
           <div style={{ color: t.textFaint, fontSize: 11, marginTop: 2, display: 'flex', gap: 8 }}>
@@ -153,6 +165,25 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
               onMouseLeave={e => { e.currentTarget.style.color = t.textFaint; e.currentTarget.style.borderColor = t.border; }}
             >🗑️</button>
           )}
+          {/* More menu */}
+          <div style={{ position: 'relative' }}>
+            <button onClick={() => setShowMenu(m => !m)} style={{ background: 'none', border: 'none', color: t.textFaint, fontSize: 18, cursor: 'pointer', padding: '4px 8px', borderRadius: 8 }}>⋯</button>
+            {showMenu && (
+              <div style={{ position: 'absolute', right: 0, top: '100%', background: t.card, border: `1px solid ${t.border}`, borderRadius: 12, padding: 6, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', zIndex: 50, minWidth: 160 }}
+                onClick={e => e.stopPropagation()}
+              >
+                {!isOwn && !reported && (
+                  <>
+                    <button onClick={() => reportPost('Spam or misleading')} style={menuBtn(t)}>🚩 Spam</button>
+                    <button onClick={() => reportPost('Inappropriate content')} style={menuBtn(t)}>⚠️ Inappropriate</button>
+                    <button onClick={() => reportPost('Promotes excessive drinking')} style={menuBtn(t)}>🍺 Irresponsible</button>
+                  </>
+                )}
+                {reported && <div style={{ padding: '8px 12px', color: t.textMuted, fontSize: 12 }}>✓ Reported</div>}
+                <button onClick={() => { navigator.clipboard.writeText(`https://drinkedinn.com/post/${post.id}`); setShowMenu(false); }} style={menuBtn(t)}>🔗 Copy Link</button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -285,3 +316,9 @@ export default function PostCard({ post: initial, onUserClick, onDelete, style: 
     </>
   );
 }
+
+const menuBtn = (t) => ({
+  display: 'block', width: '100%', background: 'none', border: 'none',
+  padding: '8px 12px', color: t.text, fontSize: 13, cursor: 'pointer',
+  textAlign: 'left', borderRadius: 8, transition: 'background 0.15s',
+});

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import api from '../api';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { enablePush, disablePush, pushSupported } from '../lib/push';
 
 const DRINKS = [
   { emoji: '🥃', name: 'Whisky' },
@@ -17,7 +18,7 @@ const DRINKS = [
 export default function EditProfileModal({ onClose }) {
   const { user, refreshUser } = useAuth();
   const { t } = useTheme();
-  const [tab, setTab] = useState('profile'); // profile | bar | password
+  const [tab, setTab] = useState('profile'); // profile | bar | password | notifications | referrals
 
   // Profile fields
   const [name, setName] = useState(user?.name || '');
@@ -35,6 +36,30 @@ export default function EditProfileModal({ onClose }) {
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
+
+  // Notification prefs
+  const [notifPrefs, setNotifPrefs] = useState({ cheers: 1, comments: 1, follows: 1, messages: 1, challenges: 1, groups: 1, digest: 0 });
+  const [notifLoaded, setNotifLoaded] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushOn, setPushOn] = useState(false);
+
+  const togglePush = async () => {
+    setPushBusy(true);
+    try {
+      if (pushOn) { await disablePush(); setPushOn(false); setSuccess('Push notifications turned off.'); }
+      else {
+        const r = await enablePush();
+        if (r.ok) { setPushOn(true); setSuccess('Push notifications enabled! 🥂'); }
+        else setError(r.reason === 'denied' ? 'Permission denied in browser.' : 'Push not available on this device.');
+      }
+    } catch { setError('Could not update push notifications.'); }
+    setPushBusy(false);
+  };
+
+  // Referral
+  const [referralCode, setReferralCode] = useState('');
+  const [referralStats, setReferralStats] = useState({ total: 0, successful: 0 });
+  const [referralCopied, setReferralCopied] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -80,15 +105,49 @@ export default function EditProfileModal({ onClose }) {
   const changePassword = async () => {
     if (!currentPw || !newPw) { setError('Fill in both passwords'); return; }
     if (newPw !== confirmPw) { setError('New passwords do not match'); return; }
-    if (newPw.length < 6) { setError('New password must be at least 6 characters'); return; }
+    // 8, matching the server. At 6 the server rejected it with its own wording
+    // after the form had already accepted it.
+    if (newPw.length < 8) { setError('New password must be at least 8 characters'); return; }
     setSaving(true); setError(''); setSuccess('');
     try {
-      await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw });
+      const { data } = await api.post('/auth/change-password', { currentPassword: currentPw, newPassword: newPw });
+      // Changing the password revokes every existing session, this one
+      // included. The server returns a replacement token; without storing it
+      // the next request 401s and the user is bounced to sign-in.
+      if (data?.token) localStorage.setItem('di_token', data.token);
       setSuccess('Password changed!');
       setCurrentPw(''); setNewPw(''); setConfirmPw('');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to change password');
     } finally { setSaving(false); }
+  };
+
+  // Load notification prefs when tab opens
+  const loadNotifPrefs = async () => {
+    if (notifLoaded) return;
+    try { const r = await api.get('/notifprefs'); setNotifPrefs(r.data); } catch {}
+    setNotifLoaded(true);
+  };
+  const saveNotifPrefs = async () => {
+    setSaving(true); setError(''); setSuccess('');
+    try { await api.put('/notifprefs', notifPrefs); setSuccess('Notification preferences saved!'); }
+    catch { setError('Failed to save preferences'); }
+    finally { setSaving(false); }
+  };
+
+  // Load referral code
+  const loadReferral = async () => {
+    try {
+      const r = await api.get('/referrals/code');
+      setReferralCode(r.data.code);
+      setReferralStats({ total: r.data.referrals || 0, successful: r.data.referrals || 0 });
+    } catch {}
+  };
+  const copyReferralLink = () => {
+    const link = `${window.location.origin}/?ref=${referralCode}`;
+    navigator.clipboard.writeText(link);
+    setReferralCopied(true);
+    setTimeout(() => setReferralCopied(false), 2000);
   };
 
   const inputStyle = {
@@ -118,7 +177,9 @@ export default function EditProfileModal({ onClose }) {
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-          <div style={{ fontWeight: 700, fontSize: 18, color: t.text }}>Edit Profile</div>
+          <div style={{ fontWeight: 700, fontSize: 18, color: t.text }}>
+            {tab === 'notifications' ? 'Notification Preferences' : tab === 'referrals' ? 'Invite Friends' : 'Edit Profile'}
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: t.textMuted, fontSize: 22, cursor: 'pointer', lineHeight: 1 }}
             onMouseEnter={e => e.target.style.color = t.danger}
             onMouseLeave={e => e.target.style.color = t.textMuted}
@@ -126,10 +187,12 @@ export default function EditProfileModal({ onClose }) {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 4, background: t.cardAlt, borderRadius: 12, padding: 4, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 4, background: t.cardAlt, borderRadius: 12, padding: 4, marginBottom: 24, flexWrap: 'wrap' }}>
           <button style={tabStyle(tab === 'profile')} onClick={() => { setTab('profile'); setError(''); setSuccess(''); }}>👤 Profile</button>
           <button style={tabStyle(tab === 'bar')} onClick={() => { setTab('bar'); setError(''); setSuccess(''); }}>🍶 My Bar</button>
           <button style={tabStyle(tab === 'password')} onClick={() => { setTab('password'); setError(''); setSuccess(''); }}>🔒 Password</button>
+          <button style={tabStyle(tab === 'notifications')} onClick={() => { setTab('notifications'); setError(''); setSuccess(''); loadNotifPrefs(); }}>🔔 Notifs</button>
+          <button style={tabStyle(tab === 'referrals')} onClick={() => { setTab('referrals'); setError(''); setSuccess(''); loadReferral(); }}>🎁 Invite</button>
         </div>
 
         {/* Profile Tab */}
@@ -177,7 +240,7 @@ export default function EditProfileModal({ onClose }) {
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={{ fontSize: 12, color: t.textMuted, fontWeight: 600, display: 'block', marginBottom: 6 }}>Bio</label>
-              <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Tell the world what's in your glass…"
+              <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="What kind of nights do you love? Where do you keep ending up?…"
                 style={{ ...inputStyle, minHeight: 80, resize: 'vertical', lineHeight: 1.5 }}
                 onFocus={e => e.target.style.borderColor = t.accent} onBlur={e => e.target.style.borderColor = t.border} />
             </div>
@@ -286,6 +349,163 @@ export default function EditProfileModal({ onClose }) {
             }}>
               {saving ? 'Changing…' : '🔒 Change Password'}
             </button>
+          </div>
+        )}
+
+        {/* Notifications Tab */}
+        {tab === 'notifications' && (
+          <div>
+            <p style={{ color: t.textMuted, fontSize: 13, margin: '0 0 20px' }}>
+              Choose which notifications you want to receive.
+            </p>
+            {[
+              { key: 'cheers',     emoji: '🥂', label: 'Cheers',          desc: 'When someone cheers your post' },
+              { key: 'comments',   emoji: '💬', label: 'Comments',        desc: 'When someone comments on your post' },
+              { key: 'follows',    emoji: '👥', label: 'New followers',    desc: 'When someone follows you' },
+              { key: 'messages',   emoji: '✉️', label: 'Direct messages', desc: 'When you receive a DM' },
+              { key: 'challenges', emoji: '⚡', label: 'Challenges',      desc: 'Challenge updates and reminders' },
+              { key: 'groups',     emoji: '🍶', label: 'Groups',          desc: 'Activity in your groups' },
+              { key: 'digest',     emoji: '📧', label: 'Weekly digest',   desc: 'Weekly summary of what you missed' },
+            ].map(item => (
+              <div key={item.key} style={{
+                display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0',
+                borderBottom: `1px solid ${t.border}`,
+              }}>
+                <span style={{ fontSize: 22, flexShrink: 0 }}>{item.emoji}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: t.text }}>{item.label}</div>
+                  <div style={{ fontSize: 12, color: t.textMuted }}>{item.desc}</div>
+                </div>
+                <button
+                  onClick={() => setNotifPrefs(p => ({ ...p, [item.key]: p[item.key] ? 0 : 1 }))}
+                  style={{
+                    width: 48, height: 28, borderRadius: 14, border: 'none', cursor: 'pointer',
+                    background: notifPrefs[item.key] ? t.accent : t.cardAlt,
+                    position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  }}
+                >
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', background: '#fff',
+                    position: 'absolute', top: 3,
+                    left: notifPrefs[item.key] ? 23 : 3,
+                    transition: 'left 0.2s', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                  }} />
+                </button>
+              </div>
+            ))}
+
+            {error && <div style={{ color: t.danger, fontSize: 13, marginTop: 12 }}>{error}</div>}
+            {success && <div style={{ color: t.green, fontSize: 13, marginTop: 12 }}>✓ {success}</div>}
+
+            <button onClick={saveNotifPrefs} disabled={saving} style={{
+              width: '100%', marginTop: 20,
+              background: saving ? t.cardAlt : 'linear-gradient(135deg, #f5a623, #ffcc5c)',
+              border: 'none', borderRadius: 20, padding: '12px',
+              color: saving ? t.textMuted : '#fff', fontWeight: 700, fontSize: 14,
+              cursor: saving ? 'wait' : 'pointer', transition: 'all 0.2s',
+            }}>
+              {saving ? 'Saving…' : '🔔 Save Preferences'}
+            </button>
+
+            {pushSupported() && (
+              <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${t.border}` }}>
+                <div style={{ fontSize: 13, color: t.textMuted, marginBottom: 10 }}>
+                  Get push alerts when someone cheers, comments, or connects — even when DrinkedInn is closed.
+                  We never push during quiet hours (10pm–8am your time) and cap it at a few a day.
+                </div>
+                <button onClick={togglePush} disabled={pushBusy} style={{
+                  width: '100%',
+                  background: pushOn ? t.cardAlt : 'linear-gradient(135deg, #0a66c2, #1d8fe8)',
+                  border: pushOn ? `1.5px solid ${t.border}` : 'none', borderRadius: 20, padding: '12px',
+                  color: pushOn ? t.text : '#fff', fontWeight: 700, fontSize: 14,
+                  cursor: pushBusy ? 'wait' : 'pointer', transition: 'all 0.2s',
+                }}>
+                  {pushBusy ? 'Working…' : pushOn ? '🔕 Turn off push notifications' : '🔔 Enable push notifications'}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Referrals / Invite Tab */}
+        {tab === 'referrals' && (
+          <div>
+            <p style={{ color: t.textMuted, fontSize: 13, margin: '0 0 20px' }}>
+              Invite friends to DrinkedInn and earn bragging rights. Share your unique link!
+            </p>
+
+            {/* Stats */}
+            <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+              <div style={{
+                flex: 1, background: t.accentSoft, border: `1px solid ${t.accent}`,
+                borderRadius: 14, padding: '16px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: t.accent }}>{referralStats.total}</div>
+                <div style={{ fontSize: 12, color: t.textMuted, fontWeight: 600 }}>Invited</div>
+              </div>
+              <div style={{
+                flex: 1, background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.3)',
+                borderRadius: 14, padding: '16px', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: '#22c55e' }}>{referralStats.successful}</div>
+                <div style={{ fontSize: 12, color: t.textMuted, fontWeight: 600 }}>Joined</div>
+              </div>
+            </div>
+
+            {/* Referral code */}
+            {referralCode && (
+              <>
+                <label style={{ fontSize: 12, color: t.textMuted, fontWeight: 600, display: 'block', marginBottom: 6 }}>Your Referral Code</label>
+                <div style={{
+                  background: t.inputBg, border: `1.5px solid ${t.border}`, borderRadius: 12,
+                  padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16,
+                }}>
+                  <span style={{ flex: 1, fontFamily: 'monospace', fontSize: 18, fontWeight: 800, color: t.accent, letterSpacing: 2 }}>{referralCode}</span>
+                  <button onClick={() => { navigator.clipboard.writeText(referralCode); }} style={{
+                    background: t.accentSoft, border: `1px solid ${t.accent}`,
+                    borderRadius: 8, padding: '6px 12px', color: t.accent,
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}>Copy</button>
+                </div>
+
+                <label style={{ fontSize: 12, color: t.textMuted, fontWeight: 600, display: 'block', marginBottom: 6 }}>Invite Link</label>
+                <div style={{
+                  background: t.inputBg, border: `1.5px solid ${t.border}`, borderRadius: 12,
+                  padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20,
+                }}>
+                  <span style={{ flex: 1, fontSize: 12, color: t.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {window.location.origin}/?ref={referralCode}
+                  </span>
+                  <button onClick={copyReferralLink} style={{
+                    background: referralCopied ? '#22c55e' : 'linear-gradient(135deg, #f5a623, #ffcc5c)',
+                    border: 'none', borderRadius: 8, padding: '8px 16px',
+                    color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    transition: 'all 0.2s', whiteSpace: 'nowrap',
+                  }}>
+                    {referralCopied ? '✓ Copied!' : '📋 Copy Link'}
+                  </button>
+                </div>
+
+                {/* Share buttons */}
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <a href={`https://wa.me/?text=${encodeURIComponent(`Join me on DrinkedInn! 🥃 ${window.location.origin}/?ref=${referralCode}`)}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#25D366', color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
+                    WhatsApp
+                  </a>
+                  <a href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Join me on DrinkedInn — your people, your places, your stories.\n${window.location.origin}/?ref=${referralCode}`)}`}
+                    target="_blank" rel="noreferrer"
+                    style={{ flex: 1, minWidth: 120, textAlign: 'center', background: '#1DA1F2', color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
+                    Twitter / X
+                  </a>
+                  <a href={`mailto:?subject=${encodeURIComponent('Join me on DrinkedInn!')}&body=${encodeURIComponent(`Hey! I'm on DrinkedInn — it's where I keep the places and nights worth remembering. Join me: ${window.location.origin}/?ref=${referralCode}`)}`}
+                    style={{ flex: 1, minWidth: 120, textAlign: 'center', background: t.accent, color: '#fff', borderRadius: 10, padding: '10px', textDecoration: 'none', fontWeight: 700, fontSize: 13 }}>
+                    Email
+                  </a>
+                </div>
+              </>
+            )}
+            {!referralCode && <div style={{ color: t.textMuted, textAlign: 'center', padding: 20 }}>Loading your referral code…</div>}
           </div>
         )}
       </div>

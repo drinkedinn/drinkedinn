@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
 import { useWindowSize } from './hooks/useWindowSize';
@@ -20,31 +21,41 @@ import MessagesPage from './components/MessagesPage';
 import MyBarPage from './components/MyBarPage';
 import ChallengesPage from './components/ChallengesPage';
 import AgentDashboard from './components/AgentDashboard';
-import AdminPage from './components/AdminPage';
 import PeoplePage from './components/PeoplePage';
 import WhiskeyCollectionPage from './components/WhiskeyCollectionPage';
+import SommelierChat from './components/SommelierChat';
 
 const TAB_META = {
-  home:       { icon: '⌂',  label: 'Home',        desc: null },
-  explore:    { icon: '🔥', label: 'Explore',       desc: 'Trending Pours' },
-  cheers:     { icon: '🥂', label: 'Cheers',        desc: 'Posts You Cheered' },
-  trips:      { icon: '✈️', label: 'Trips',         desc: 'Travel & Location Posts' },
-  people:     { icon: '🫂', label: 'Find People',   desc: 'Connect with drink pros' },
-  whiskeys:   { icon: '🥃', label: 'World Whiskeys', desc: '58 whiskies from 13 countries' },
-  groups:     { icon: '🍶', label: 'Drink Groups',  desc: 'Find your tribe' },
-  messages:   { icon: '💬', label: 'Messages',      desc: 'Direct messages' },
-  mybar:      { icon: '🍸', label: 'My Bar',        desc: 'Ratings, Collection & Badges' },
-  challenges: { icon: '⚡', label: 'Challenges',    desc: 'Monthly drink challenges' },
-  agents:     { icon: '🤖', label: 'Agents',        desc: 'AI Agent Command Center' },
-  admin:      { icon: '🛡️', label: 'Admin',         desc: 'Platform management' },
+  home:       { icon: '⌂',  label: 'Home',           desc: null },
+  explore:    { icon: '🔥', label: 'Explore',          desc: 'Trending Pours' },
+  cheers:     { icon: '🥂', label: 'Cheers',           desc: 'Posts You Cheered' },
+  trips:      { icon: '✈️', label: 'Trips',            desc: 'Travel & Location Posts' },
+  people:     { icon: '🫂', label: 'Find People',      desc: 'Connect with drink pros' },
+  whiskeys:   { icon: '🥃', label: 'World Whiskeys',   desc: '58 whiskies from 13 countries' },
+  groups:     { icon: '🍶', label: 'Drink Groups',     desc: 'Find your tribe' },
+  messages:   { icon: '💬', label: 'Messages',         desc: 'Direct messages' },
+  mybar:      { icon: '🍸', label: 'My Bar',           desc: 'Ratings, Collection & Badges' },
+  challenges: { icon: '⚡', label: 'Challenges',       desc: 'Monthly drink challenges' },
+  agents:     { icon: '🤖', label: 'Agents',           desc: 'AI Agent Command Center' },
 };
+
+// Map URL paths to tab IDs
+const PATH_TO_TAB = {
+  '/': 'home', '/explore': 'explore', '/cheers': 'cheers', '/trips': 'trips',
+  '/people': 'people', '/whiskeys': 'whiskeys', '/groups': 'groups',
+  '/messages': 'messages', '/mybar': 'mybar', '/challenges': 'challenges',
+  '/agents': 'agents',
+};
+const TAB_TO_PATH = Object.fromEntries(Object.entries(PATH_TO_TAB).map(([k, v]) => [v, k]));
 
 export default function App() {
   const { user, loading } = useAuth();
   const { t } = useTheme();
   const { isMobile, isTablet } = useWindowSize();
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [splash, setSplash] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
   const [showPost, setShowPost] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -52,29 +63,59 @@ export default function App() {
   const [feedKey, setFeedKey] = useState(0);
   const [hashtag, setHashtag] = useState(null);
 
+  // Derive active tab from URL
+  const pathBase = '/' + (location.pathname.split('/')[1] || '');
+  const activeTab = PATH_TO_TAB[pathBase] || (pathBase.startsWith('/profile') ? 'home' : 'home');
+
+  // Detect /profile/:id from URL
+  useEffect(() => {
+    const match = location.pathname.match(/^\/profile\/(\d+)/);
+    if (match) setProfileId(parseInt(match[1]));
+    else if (!location.pathname.startsWith('/profile')) setProfileId(null);
+  }, [location.pathname]);
+
+  // Detect /hashtag/:tag from URL
+  useEffect(() => {
+    const match = location.pathname.match(/^\/hashtag\/(.+)/);
+    if (match) { setHashtag('#' + decodeURIComponent(match[1])); }
+    else if (!location.pathname.startsWith('/hashtag')) setHashtag(null);
+  }, [location.pathname]);
+
   if (loading) return null;
-  if (!user) return <AuthPage />;
+  if (!user) {
+    // Show landing page for root, auth for /login
+    // <Navigate>, not navigate(): calling the imperative form during render
+    // is a React Router error, and in practice the redirect never committed —
+    // the component returned null and the visitor got a blank page. The
+    // landing page was unreachable from the root URL.
+    if (location.pathname === '/') return <Navigate to="/welcome" replace />;
+    return <AuthPage />;
+  }
   if (splash) return <Splash onDone={() => setSplash(false)} />;
   if (!user.onboarded) return <OnboardingModal onDone={() => window.location.reload()} />;
 
   const cols = isMobile ? '1fr' : isTablet ? '1fr 2fr' : '280px 1fr 300px';
 
   const goTab = tab => {
-    setActiveTab(tab);
+    const path = TAB_TO_PATH[tab] || '/';
+    navigate(path);
     setProfileId(null);
     setHashtag(null);
   };
 
   const handleHashtag = tag => {
-    setHashtag(tag);
-    setActiveTab('explore');
-    setProfileId(null);
+    const cleanTag = tag.startsWith('#') ? tag.slice(1) : tag;
+    navigate(`/hashtag/${encodeURIComponent(cleanTag)}`);
     setShowSearch(false);
+  };
+
+  const handleProfileClick = id => {
+    navigate(`/profile/${id}`);
   };
 
   const onPosted = () => {
     setFeedKey(k => k + 1);
-    setActiveTab('home');
+    navigate('/');
     setHashtag(null);
   };
 
@@ -86,23 +127,21 @@ export default function App() {
         <>
           <Stories />
           <CreatePost onPost={() => setShowPost(true)} />
-          <Feed key={`home-${feedKey}`} mode="home" onUserClick={setProfileId} />
+          <Feed key={`home-${feedKey}`} mode="home" onUserClick={handleProfileClick} />
         </>
       );
     }
 
-    if (activeTab === 'people') return <PeoplePage onUserClick={setProfileId} />;
+    if (activeTab === 'people') return <PeoplePage onUserClick={handleProfileClick} />;
     if (activeTab === 'whiskeys') return <WhiskeyCollectionPage />;
     if (activeTab === 'groups') return <GroupsPage />;
     if (activeTab === 'messages') return <MessagesPage />;
     if (activeTab === 'mybar') return <MyBarPage userId={user.id} />;
     if (activeTab === 'challenges') return <ChallengesPage />;
     if (activeTab === 'agents' && user?.is_admin) return <AgentDashboard />;
-    if (activeTab === 'admin'  && user?.is_admin) return <AdminPage />;
 
     return (
       <>
-        {/* Tab header */}
         <div style={{
           background: t.card, borderRadius: 16, padding: '16px 20px',
           border: `1px solid ${t.border}`, marginBottom: 16,
@@ -114,10 +153,10 @@ export default function App() {
             <div style={{ fontWeight: 700, fontSize: 18, color: t.text }}>{meta.label}</div>
             <div style={{ fontSize: 13, color: t.textMuted }}>{meta.desc}</div>
           </div>
-          {hashtag && activeTab === 'explore' && (
+          {hashtag && (
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ color: t.link, fontWeight: 600, fontSize: 14 }}>Filter: {hashtag}</span>
-              <button onClick={() => setHashtag(null)} style={{
+              <button onClick={() => { setHashtag(null); navigate('/explore'); }} style={{
                 background: t.dangerBg, border: `1px solid ${t.dangerBorder}`,
                 borderRadius: 20, padding: '4px 12px', color: t.danger,
                 fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -128,9 +167,9 @@ export default function App() {
 
         <Feed
           key={`${activeTab}-${hashtag || ''}-${feedKey}`}
-          mode={activeTab}
+          mode={activeTab === 'home' ? 'home' : activeTab}
           hashtag={hashtag}
-          onUserClick={setProfileId}
+          onUserClick={handleProfileClick}
         />
       </>
     );
@@ -142,7 +181,7 @@ export default function App() {
       {showSearch && (
         <SearchModal
           onClose={() => setShowSearch(false)}
-          onUserClick={id => { setProfileId(id); setShowSearch(false); }}
+          onUserClick={id => { handleProfileClick(id); setShowSearch(false); }}
           onHashtagClick={handleHashtag}
         />
       )}
@@ -155,15 +194,15 @@ export default function App() {
         setShowSearch={setShowSearch}
         setShowEditProfile={setShowEditProfile}
         onLogoClick={() => goTab('home')}
-        onProfileClick={() => setProfileId(user.id)}
+        onProfileClick={() => handleProfileClick(user.id)}
       />
 
       {profileId ? (
         <div style={{ maxWidth: 1200, margin: '0 auto', padding: isMobile ? '16px 12px' : '24px 16px' }}>
           <ProfilePage
             userId={profileId}
-            onBack={() => setProfileId(null)}
-            onUserClick={setProfileId}
+            onBack={() => { setProfileId(null); navigate(-1); }}
+            onUserClick={handleProfileClick}
           />
         </div>
       ) : (
@@ -171,7 +210,7 @@ export default function App() {
           maxWidth: 1200, margin: '0 auto', padding: isMobile ? '16px 12px' : '24px 16px',
           display: 'grid', gridTemplateColumns: cols, gap: isMobile ? 12 : 20,
         }}>
-          {!isMobile && <LeftSidebar onProfileClick={() => setProfileId(user.id)} />}
+          {!isMobile && <LeftSidebar onProfileClick={() => handleProfileClick(user.id)} />}
 
           <main>
             {renderTabContent()}
@@ -179,7 +218,7 @@ export default function App() {
 
           {!isMobile && !isTablet && (
             <RightSidebar
-              onUserClick={setProfileId}
+              onUserClick={handleProfileClick}
               onHashtagClick={handleHashtag}
             />
           )}
@@ -199,7 +238,7 @@ export default function App() {
             { id: 'groups',     icon: '🍶', label: 'Groups' },
             { id: 'post',       icon: '➕', label: 'Pour',   action: () => setShowPost(true) },
             { id: 'messages',   icon: '💬', label: 'DMs' },
-            { id: 'profile',    icon: '👤', label: 'Me',     action: () => setProfileId(user.id) },
+            { id: 'profile',    icon: '👤', label: 'Me',     action: () => handleProfileClick(user.id) },
           ].map(tab => (
             <button key={tab.id} onClick={tab.action || (() => goTab(tab.id))} style={{
               flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
@@ -216,6 +255,9 @@ export default function App() {
         </nav>
       )}
       {isMobile && <div style={{ height: 70 }} />}
+
+      {/* AI Sommelier floating chat — available everywhere when logged in */}
+      <SommelierChat />
     </div>
   );
 }

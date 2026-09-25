@@ -1,12 +1,49 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { notify } = require('../lib/notify');
+const { deleteUserCompletely } = require('../lib/deleteUser');
 
 const router = express.Router();
 
+// Permanently erase the signed-in account and everything attached to it.
+// Required by the App Store and Play Store for any app that allows sign-up,
+// and by GDPR/CCPA. Re-authenticates first — this is irreversible.
+router.delete('/me', auth, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) {
+    return res.status(400).json({ error: 'Enter your password to confirm deletion.' });
+  }
+
+  try {
+    const user = await db.get('SELECT id, password, is_admin FROM users WHERE id = ?', [req.user.id]);
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+
+    const valid = await require('../lib/password').verify(password, user.password);
+    if (!valid) return res.status(401).json({ error: 'That password is incorrect.' });
+
+    // Guard against the platform locking itself out of its own admin panel.
+    if (user.is_admin === 1) {
+      const admins = await db.get('SELECT COUNT(*) AS c FROM users WHERE is_admin = 1');
+      if ((admins?.c || 0) <= 1) {
+        return res.status(409).json({
+          error: 'This is the only admin account. Promote another admin before deleting it.',
+        });
+      }
+    }
+
+    await deleteUserCompletely(user.id);
+    res.json({ ok: true, deleted: true });
+  } catch (err) {
+    console.error('[users] delete failed:', err.message);
+    res.status(500).json({ error: 'Could not delete the account. Contact support.' });
+  }
+});
+
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -18,7 +55,7 @@ router.get('/me', auth, async (req, res) => {
 });
 
 router.put('/me', auth, async (req, res) => {
-  const { name, title, bio, avatar, drinks, onboarded } = req.body;
+  const { name, title, bio, avatar, drinks, onboarded, date_of_birth, country_code } = req.body;
   if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
   const drinksJson = typeof drinks === 'object' ? JSON.stringify(drinks) : (drinks || '{}');
   try {
@@ -26,7 +63,34 @@ router.put('/me', auth, async (req, res) => {
       'UPDATE users SET name = ?, title = ?, bio = ?, avatar = ?, drinks = ?, onboarded = ? WHERE id = ?',
       [name.trim(), title || '', bio || '', avatar || '', drinksJson, onboarded ? 1 : 0, req.user.id]
     );
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.user.id]);
+
+    // Date of birth and country drive the age gate and every jurisdiction
+    // decision, so they are WRITE-ONCE here: this fills them in for an account
+    // that has none (the onboarding flow collects them), and refuses to
+    // overwrite an existing value. Without that guard a member could raise
+    // their own age, or move themselves to a permissive market, with a profile
+    // edit. Changing either afterwards is a support action, not a PUT.
+    if (date_of_birth || country_code) {
+      const current = await db.get(
+        'SELECT date_of_birth, country_code FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      if (date_of_birth && !current?.date_of_birth) {
+        const d = new Date(date_of_birth);
+        if (!isNaN(d) && /^\d{4}-\d{2}-\d{2}$/.test(String(date_of_birth))) {
+          await db.run('UPDATE users SET date_of_birth = ? WHERE id = ? AND date_of_birth IS NULL',
+            [date_of_birth, req.user.id]);
+        }
+      }
+      if (country_code && !current?.country_code) {
+        const cc = String(country_code).toUpperCase();
+        if (/^[A-Z]{2}$/.test(cc)) {
+          await db.run('UPDATE users SET country_code = ? WHERE id = ? AND country_code IS NULL',
+            [cc, req.user.id]);
+        }
+      }
+    }
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -83,7 +147,7 @@ router.post('/:id/connect', auth, async (req, res) => {
       res.json({ connected: false });
     } else {
       await db.run('INSERT OR IGNORE INTO connections (user_id, target_id) VALUES (?, ?)', [uid, tid]);
-      await db.run('INSERT INTO notifications (user_id, actor_id, type, post_id) VALUES (?, ?, ?, NULL)', [tid, uid, 'connect']);
+      await notify({ recipientId: tid, actorId: uid, type: 'connect', actorName: req.user.name || 'Someone' });
       res.json({ connected: true });
     }
   } catch (err) {
@@ -93,8 +157,18 @@ router.post('/:id/connect', auth, async (req, res) => {
 
 router.get('/:id', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, created_at FROM users WHERE id = ?', [req.params.id]);
+    // This is the PUBLIC profile. It previously reused the /me column list,
+    // which includes email and is_admin — so any signed-in account could read
+    // every member's email address by walking sequential ids, and learn which
+    // accounts are administrators. Neither belongs in someone else's profile.
+    const user = await db.get('SELECT id, name, title, avatar, bio, drinks, onboarded, verified, premium, badge, current_streak, longest_streak, created_at FROM users WHERE id = ?', [req.params.id]);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // Viewing your own profile through this route still shows your own email.
+    if (String(req.user.id) === String(req.params.id)) {
+      const self = await db.get('SELECT email, is_admin FROM users WHERE id = ?', [req.user.id]);
+      Object.assign(user, self);
+    }
 
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.params.id]);
     const connections = connRow?.count || 0;
@@ -115,6 +189,82 @@ router.get('/:id', auth, async (req, res) => {
     res.json({ ...user, connections, isConnected, posts });
   } catch (err) {
     res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
+// ── /users/:id/places — Places pillar on the profile ────────────────────────
+// Combined view: places the user has visited, dedup'd and most-recent first.
+router.get('/:id/places', auth, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT pl.*,
+              MAX(v.created_at) AS last_visit,
+              COUNT(v.id)       AS visit_count,
+              -- The place card's options menu can block the member who ADDED
+              -- the place. Without a name it labelled the dialog with the
+              -- venue's name, so the user blocked a person they were never
+              -- shown.
+              cu.name           AS created_by_name
+         FROM places pl
+         JOIN place_visits v ON v.place_id = pl.id
+    LEFT JOIN users cu ON cu.id = pl.created_by
+        WHERE v.user_id = ?
+     GROUP BY pl.id
+     ORDER BY last_visit DESC
+        LIMIT 60`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/places]', err.message);
+    res.status(500).json({ error: 'Failed to fetch places' });
+  }
+});
+
+// ── /users/:id/trips — country groupings for the profile Trips pillar ───────
+router.get('/:id/trips', auth, async (req, res) => {
+  try {
+    const rows = await db.all(
+      `SELECT country,
+              COUNT(DISTINCT place_id) AS place_count,
+              COUNT(id)                AS visit_count,
+              MAX(created_at)          AS last_visit
+         FROM place_visits
+        WHERE user_id = ? AND country != ''
+     GROUP BY country
+     ORDER BY last_visit DESC`,
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/trips]', err.message);
+    res.status(500).json({ error: 'Failed to fetch trips' });
+  }
+});
+
+// ── /users/:id/tagged — posts the user was tagged in ────────────────────────
+// v1 heuristic: posts whose content contains "@<name>" of the target user.
+// Real tagging is a future extension; documented in notes so a proper tags
+// table can back this endpoint later without a client change.
+router.get('/:id/tagged', auth, async (req, res) => {
+  try {
+    const u = await db.get('SELECT name FROM users WHERE id = ?', [req.params.id]);
+    if (!u) return res.status(404).json({ error: 'Not found' });
+    const handle = String(u.name || '').split(/\s+/)[0];
+    if (!handle) return res.json([]);
+    const rows = await db.all(
+      `SELECT p.*, u.name, u.title, u.avatar
+         FROM posts p
+         JOIN users u ON u.id = p.user_id
+        WHERE p.content LIKE ?
+     ORDER BY p.created_at DESC
+        LIMIT 40`,
+      [`%@${handle}%`]
+    );
+    res.json(rows);
+  } catch (err) {
+    console.error('[/users/:id/tagged]', err.message);
+    res.status(500).json({ error: 'Failed to fetch tagged' });
   }
 });
 

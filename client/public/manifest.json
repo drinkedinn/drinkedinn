@@ -1,0 +1,17 @@
+{
+  "name": "DrinkedInn",
+  "short_name": "DrinkedInn",
+  "description": "Your people. Your places. Your stories.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b14",
+  "theme_color": "#0a66c2",
+  "icons": [
+    {
+      "src": "/logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,90 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "drinkedinn",
+  "main": "server/worker.js",
+
+  // nodejs_compat is what makes Express run here at all — it provides
+  // node:http, node:net and node:tls. With any date after 2024-09-23 this flag
+  // already implies the v2 behaviour, so there is no need to list both.
+  // Raise this date only alongside a wrangler upgrade: the local runtime binary
+  // refuses to start if the date is newer than it supports.
+  "compatibility_date": "2026-05-03",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // iconv-lite (via body-parser -> raw-body) does not survive the Workers
+  // bundler: it fails with "require_streams(...) is not a function" at startup.
+  // The API is UTF-8 JSON only, so a small shim covers everything actually used.
+  "alias": {
+    "iconv-lite": "./server/lib/iconv-shim.js",
+
+    // The default @libsql/client entry loads a NATIVE binary for local SQLite
+    // files. Workers cannot load native modules, and does not need to — Turso
+    // is reached over HTTP. The /web build is exactly that path.
+    "@libsql/client": "./server/node_modules/@libsql/client/lib-esm/web.js"
+  },
+
+  // The built SPA. The worker serves anything outside /api from here and falls
+  // back to index.html so client-side routes survive a hard refresh.
+  "assets": {
+    "directory": "./client/dist",
+    "binding": "ASSETS",
+
+    // "none" makes the binding return a real 404 for an unknown path, and the
+    // Worker decides what that means (see serveUpload / looksLikeFile in
+    // server/worker.js): a client route gets index.html at its own URL, while a
+    // missing .js or .css gets an honest 404.
+    //
+    // NOT "single-page-application": that answers *every* unknown path with
+    // index.html and a 200, including missing assets — so a bad script URL
+    // returns HTML and the browser reports "Unexpected token '<'", which points
+    // nowhere near the real problem. It also made the Worker's own fallback
+    // logic unreachable, since the binding never returned a 404 to react to.
+    "not_found_handling": "none"
+  },
+
+  "observability": {
+    "enabled": true
+  },
+
+  // Uploads. Native binding — no credentials, no signing, no egress fees.
+  "r2_buckets": [
+    {
+      "binding": "UPLOADS",
+      "bucket_name": "drinkedinn-uploads"
+    }
+  ],
+
+  // CRON TRIGGERS ARE DISABLED.
+  //
+  // The Workers free plan allows 5 cron triggers per ACCOUNT, and this account
+  // has already used them on other Workers. Rather than fail every deploy, the
+  // scheduled work runs over HTTP instead: /api/jobs/lifecycle already exists
+  // and is authenticated with CRON_SECRET, so any external scheduler can call
+  // it. See CLOUDFLARE.md.
+  //
+  // Re-enable by uncommenting once a slot is free or the account is on Paid.
+  // "triggers": {
+  //   "crons": ["0 16 * * *", "0 */4 * * *"]
+  // },
+
+  // ── Custom domain ────────────────────────────────────────────────────
+  // Deliberately COMMENTED OUT. Uncommenting makes `wrangler deploy` try to
+  // attach the route, and the deploy FAILS if the token cannot edit the zone —
+  // so an unattended deploy would start breaking. Attach the domain in the
+  // dashboard first (Workers & Pages -> drinkedinn -> Settings -> Domains &
+  // Routes -> Add custom domain), then uncomment this so the binding is
+  // reproducible from the repo rather than existing only as dashboard state.
+  //
+  // "routes": [
+  //   { "pattern": "www.drinkedinn.com", "custom_domain": true }
+  // ],
+
+  "vars": {
+    "NODE_ENV": "production",
+    "PUBLIC_BASE_URL": "https://www.drinkedinn.com",
+    "MIN_AGE": "18"
+  }
+
+  // Secrets are NOT listed here — they are set with `wrangler secret put` and
+  // never committed. See CLOUDFLARE.md for the full list.
+}

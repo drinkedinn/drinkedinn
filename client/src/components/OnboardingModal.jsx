@@ -102,11 +102,11 @@ export default function OnboardingModal({ onDone }) {
               Welcome to DrinkedInn!
             </h2>
             <p style={{ color: t.textMuted, fontSize: 15, lineHeight: 1.6, margin: '0 0 8px' }}>
-              Where professionals actually unwind.
+              Stories start here.
             </p>
             <p style={{ color: t.textSub, fontSize: 14, lineHeight: 1.6, margin: '0 0 32px' }}>
-              No business talk. No synergy. No KPIs.<br />
-              Just drinks, stories, and good vibes. 🎉
+              Your people. Your places. Your stories.<br />
+              Keep the nights worth remembering. 🎉
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <button onClick={() => setStep(2)} style={{
@@ -177,7 +177,7 @@ export default function OnboardingModal({ onDone }) {
             <div style={{ marginBottom: 24 }}>
               <label style={{ fontSize: 12, color: t.textMuted, fontWeight: 600, display: 'block', marginBottom: 6 }}>Bio <span style={{ fontWeight: 400 }}>(optional)</span></label>
               <textarea value={bio} onChange={e => setBio(e.target.value)}
-                placeholder="What's your drink story? Where have you sipped? What's your guilty pleasure?"
+                placeholder="What kind of nights do you love? Favourite places, people you go with, what you're always looking for…"
                 style={{ ...inputStyle, minHeight: 70, resize: 'vertical', lineHeight: 1.5 }}
                 onFocus={e => e.target.style.borderColor = t.accent}
                 onBlur={e => e.target.style.borderColor = t.border}

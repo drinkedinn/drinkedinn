@@ -20,7 +20,7 @@ const MARKETING_SKILLS = [
     desc: 'Create viral posts for Instagram, LinkedIn & TikTok to grow DrinkedInn',
     prompts: [
       'Write 5 viral Instagram captions for DrinkedInn that will drive sign-ups from whisky enthusiasts',
-      'Create a LinkedIn post thread about drink culture that showcases DrinkedInn features',
+      'Write a founder story post about why we built an inn for good moments',
       'Write a TikTok video hook script (first 3 seconds) for DrinkedInn targeting millennials who love craft beer',
       'Generate a week-long content calendar for DrinkedInn social accounts',
       'Write 10 tweet ideas for the @DrinkedInn account that would get high engagement',
@@ -45,11 +45,11 @@ const MARKETING_SKILLS = [
     name: 'Copy & Messaging',
     desc: 'Taglines, landing page copy, value propositions for DrinkedInn',
     prompts: [
-      'Write 10 headline variations for the DrinkedInn homepage. Current: "Where Professionals Actually Unwind"',
+      'Write 10 headline variations for the DrinkedInn homepage. Current: "Stories start here." Lead with people, moments and places — never alcohol.',
       'Write the hero section copy for drinkedinn.com — include headline, subheadline, and CTA',
       'Create 5 value proposition statements for DrinkedInn targeting: (1) whisky collectors, (2) craft beer lovers, (3) wine professionals',
       'Write an "About Us" page for DrinkedInn that feels authentic, not corporate',
-      'Rewrite the sign-up CTA to maximise conversions. Current CTA: "Join the Bar 🍺"',
+      'Rewrite the sign-up CTA to maximise conversions. Current CTA: "Pull Up a Chair"',
     ],
   },
   {

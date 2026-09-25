@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../db');
 const auth = require('../middleware/auth');
+const { excludeBlocked } = require('../lib/blocking');
 
 const router = express.Router();
 
@@ -11,10 +12,15 @@ router.get('/', auth, async (req, res) => {
   try {
     const users = await db.all(`
       SELECT id, name, title, avatar,
-        (SELECT COUNT(*) FROM connections WHERE user_id = id) as connections
+        (SELECT COUNT(*) FROM connections WHERE user_id = id) as connections,
+        -- Without this the client renders every result as "not connected", and
+        -- POST /users/:id/connect is a TOGGLE — so tapping Connect on someone
+        -- you already follow silently unfollows them.
+        (SELECT COUNT(*) FROM connections WHERE user_id = ? AND target_id = users.id) as isConnected
       FROM users WHERE (name LIKE ? OR title LIKE ?) AND id != ?
+        AND ${excludeBlocked('id')}
       LIMIT 8
-    `, [q, q, req.user.id]);
+    `, [req.user.id, q, q, req.user.id, req.user.id, req.user.id]);
 
     const posts = await db.all(`
       SELECT p.*, u.name, u.title, u.avatar,
@@ -25,8 +31,9 @@ router.get('/', auth, async (req, res) => {
         0 as user_repoured
       FROM posts p JOIN users u ON p.user_id = u.id
       WHERE p.content LIKE ?
+        AND ${excludeBlocked('p.user_id')}
       ORDER BY p.created_at DESC LIMIT 10
-    `, [req.user.id, q]);
+    `, [req.user.id, q, req.user.id, req.user.id]);
 
     res.json({ users, posts });
   } catch (err) {

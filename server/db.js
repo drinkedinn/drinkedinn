@@ -1,39 +1,58 @@
 const { createClient } = require('@libsql/client');
 const bcrypt = require('bcryptjs');
 
-const client = createClient({
-  url: process.env.TURSO_DB_URL || 'file:./drinkeden.db',
-  authToken: process.env.TURSO_DB_AUTH_TOKEN,
-});
+// Created lazily, not at module load.
+//
+// Cloudflare validates a Worker by importing it at deploy time, before secrets
+// are readable. Building the client eagerly meant TURSO_DB_URL was undefined,
+// the 'file:' fallback kicked in, and the web client — which only speaks
+// http/https/libsql — rejected it, failing the whole deploy.
+//
+// Deferring until first query also means an unconfigured database surfaces as a
+// clear runtime error on one request rather than a crash at import.
+let _client = null;
+function client_() {
+  if (_client) return _client;
+
+  const url = process.env.TURSO_DB_URL
+    || (typeof globalThis.WebSocketPair === 'undefined' ? 'file:./drinkeden.db' : null);
+
+  if (!url) {
+    throw new Error('[db] TURSO_DB_URL is not set. Workers cannot use a local file database.');
+  }
+
+  _client = createClient({ url, authToken: process.env.TURSO_DB_AUTH_TOKEN });
+  return _client;
+}
 
 // ── Async helpers ──────────────────────────────────────────────────────────────
 
 // get - returns first row or null
 async function get(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return r.rows[0] || null;
 }
 
 // all - returns array of rows
 async function all(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return r.rows;
 }
 
 // run - returns { lastInsertRowid, changes }
 async function run(sql, args = []) {
-  const r = await client.execute({ sql, args });
+  const r = await client_().execute({ sql, args });
   return { lastInsertRowid: Number(r.lastInsertRowid), changes: r.rowsAffected };
 }
 
 // exec - run raw SQL (for CREATE TABLE etc.)
 async function exec(sql) {
-  await client.executeMultiple(sql);
+  await client_().executeMultiple(sql);
 }
 
 // batch - multiple statements atomically
 async function batch(stmts) {
-  return client.batch(stmts, 'write');
+  return client_().batch(stmts, 'write');
 }
 
 // ── init() — create tables and run migrations ─────────────────────────────────
@@ -248,6 +267,119 @@ async function init() {
       data_json TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    CREATE TABLE IF NOT EXISTS referrals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      referrer_id INTEGER NOT NULL,
+      code TEXT UNIQUE NOT NULL,
+      referred_id INTEGER DEFAULT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (referrer_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reporter_id INTEGER NOT NULL,
+      target_type TEXT NOT NULL,
+      target_id INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      status TEXT DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (reporter_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS featured_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_id INTEGER NOT NULL UNIQUE,
+      featured_date TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (post_id) REFERENCES posts(id)
+    );
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      user_id INTEGER PRIMARY KEY,
+      cheers INTEGER DEFAULT 1,
+      comments INTEGER DEFAULT 1,
+      connections INTEGER DEFAULT 1,
+      messages INTEGER DEFAULT 1,
+      challenges INTEGER DEFAULT 1,
+      digest_email INTEGER DEFAULT 1,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    -- ── Places pillar ────────────────────────────────────────────────────
+    -- Canonical venues. A post's place_id points at one of these; multiple
+    -- posts about the same "Sky Lounge, Kampala" collapse into one profile.
+    CREATE TABLE IF NOT EXISTS places (
+      id            INTEGER PRIMARY KEY AUTOINCREMENT,
+      name          TEXT NOT NULL,
+      category      TEXT DEFAULT '',
+      city          TEXT DEFAULT '',
+      country       TEXT DEFAULT '',
+      lat           REAL DEFAULT NULL,
+      lng           REAL DEFAULT NULL,
+      cover_url     TEXT DEFAULT '',
+      created_by    INTEGER,
+      created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_places_name ON places(name);
+    CREATE INDEX IF NOT EXISTS idx_places_city ON places(city);
+    CREATE INDEX IF NOT EXISTS idx_places_country ON places(country);
+
+    -- "Want to go" — one row per user/place pair (existence = saved).
+    CREATE TABLE IF NOT EXISTS saved_places (
+      user_id    INTEGER NOT NULL,
+      place_id   INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (user_id, place_id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (place_id) REFERENCES places(id)
+    );
+
+    -- Been-here history. Multiple rows per user/place allowed (revisits).
+    -- The country column is denormalised so the Trips grouping is a single scan.
+    CREATE TABLE IF NOT EXISTS place_visits (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      place_id   INTEGER NOT NULL,
+      country    TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (place_id) REFERENCES places(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_visits_user ON place_visits(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_visits_place ON place_visits(place_id);
+
+    -- ── Admin ────────────────────────────────────────────────────────────
+    -- Role assignment. One role per admin; the role names and the permissions
+    -- each carries live in lib/permissions.js, not here, so re-scoping a role
+    -- does not need a migration.
+    CREATE TABLE IF NOT EXISTS admin_roles (
+      user_id    INTEGER PRIMARY KEY,
+      role       TEXT NOT NULL,
+      granted_by INTEGER,
+      granted_at INTEGER NOT NULL,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
+    -- Feature flags with a kill switch. An enabled=0 beats any targeting, so
+    -- turning something off is one write and takes effect on the next
+    -- evaluation — no App Store release needed to stop a bad feature.
+    CREATE TABLE IF NOT EXISTS feature_flags (
+      key         TEXT PRIMARY KEY,
+      enabled     INTEGER NOT NULL DEFAULT 0,
+      rollout_pct INTEGER NOT NULL DEFAULT 0,
+      targeting   TEXT DEFAULT '{}',
+      description TEXT DEFAULT '',
+      updated_by  INTEGER,
+      updated_at  INTEGER NOT NULL
+    );
+
+    -- Remote config: non-sensitive app behaviour changeable without a release
+    -- (minimum supported version, upload limits, maintenance mode).
+    CREATE TABLE IF NOT EXISTS app_config (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_by INTEGER,
+      updated_at INTEGER NOT NULL
+    );
   `);
 
   // Safe migrations for existing DBs
@@ -258,21 +390,274 @@ async function init() {
     `ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`,
     `ALTER TABLE posts ADD COLUMN lat REAL DEFAULT NULL`,
     `ALTER TABLE posts ADD COLUMN lng REAL DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN referral_code TEXT DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN referred_by INTEGER DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN badge TEXT DEFAULT NULL`,
+    `ALTER TABLE users ADD COLUMN verified INTEGER DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN premium INTEGER DEFAULT 0`,
+    // Security hardening columns
+    `ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN verify_token TEXT`,
+    `ALTER TABLE users ADD COLUMN verify_sent_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN date_of_birth TEXT`,
+    `ALTER TABLE users ADD COLUMN token_version INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN failed_logins INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN locked_until INTEGER`,
+    // Engagement engine — streaks (community participation, NOT drink volume)
+    `ALTER TABLE users ADD COLUMN current_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN longest_streak INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN streak_date TEXT`,
+    `ALTER TABLE users ADD COLUMN last_active_date TEXT`,
+    // Engagement engine — responsible push throttle state
+    `ALTER TABLE users ADD COLUMN tz_offset_minutes INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN push_count INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN push_count_date TEXT`,
+    // Engagement engine — batch duplicate notifications ("X and N others cheered")
+    `ALTER TABLE notifications ADD COLUMN count INTEGER NOT NULL DEFAULT 1`,
+    // Lifecycle email — last day we sent a re-engagement digest (yyyy-mm-dd)
+    `ALTER TABLE users ADD COLUMN last_digest_date TEXT`,
+    // Jurisdiction — drives the age gate, ad eligibility and assurance level.
+    `ALTER TABLE users ADD COLUMN country_code TEXT`,
+    // Age assurance: 0 self-declared, 1 age-estimated, 2 document-verified.
+    // We store only the outcome — never an identity document.
+    `ALTER TABLE users ADD COLUMN age_assurance_level INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE users ADD COLUMN age_assurance_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN age_assurance_ref TEXT`,
+    // Users can refuse brand content outright — a personal setting the ad
+    // delivery gate checks before anything commercial.
+    `ALTER TABLE users ADD COLUMN brand_content_opt_out INTEGER NOT NULL DEFAULT 0`,
+    // Places pillar. Each post can anchor to a canonical place row. Nullable
+    // during transition — free-text posts.location keeps working.
+    `ALTER TABLE posts ADD COLUMN place_id INTEGER DEFAULT NULL`,
+    // Interests-first onboarding — comma-separated slugs drive suggestions and
+    // Explore's editorial sections when the account is too new for real signal.
+    `ALTER TABLE users ADD COLUMN interests TEXT DEFAULT ''`,
+    `ALTER TABLE users ADD COLUMN home_city TEXT DEFAULT ''`,
+    // Moderation queue. P0 is reserved for child-safety and immediate-harm
+    // reports, which must never sit behind a pile of spam in a chronological
+    // list — the whole point of a priority is that severity beats arrival time.
+    `ALTER TABLE reports ADD COLUMN priority TEXT NOT NULL DEFAULT 'P2'`,
+    `ALTER TABLE reports ADD COLUMN assigned_to INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolved_by INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolved_at INTEGER`,
+    `ALTER TABLE reports ADD COLUMN resolution TEXT`,
+    // Enforcement state, so a suspension is a fact on the account rather than
+    // something implied by a missing row.
+    `ALTER TABLE users ADD COLUMN suspended_until INTEGER`,
+    `ALTER TABLE users ADD COLUMN banned_at INTEGER`,
+    `ALTER TABLE users ADD COLUMN moderation_note TEXT`,
   ];
   for (const sql of migrations) {
     try { await exec(sql); } catch {}
   }
 
-  // Mark the platform owner as admin (by email — works regardless of user ID)
-  try {
-    await run("UPDATE users SET is_admin = 1 WHERE email IN ('rahul@drinkeden.app','rahul@drinkedinn.app')");
-  } catch(e) {}
+  // Admin audit trail and password reset tables
+  const securityTables = [
+    `CREATE TABLE IF NOT EXISTS admin_audit (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       actor_id INTEGER NOT NULL,
+       action TEXT NOT NULL,
+       target_type TEXT,
+       target_id TEXT,
+       detail TEXT,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE TABLE IF NOT EXISTS password_resets (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       token TEXT NOT NULL,
+       expires_at INTEGER NOT NULL,
+       used INTEGER NOT NULL DEFAULT 0
+     )`,
+    // ── Brand advertising ────────────────────────────────────────────────
+    // A brand is a legal entity we have a contract with. `verified` is set by
+    // an admin after checking they are who they claim — never self-serve.
+    `CREATE TABLE IF NOT EXISTS brands (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       name TEXT NOT NULL,
+       slug TEXT UNIQUE NOT NULL,
+       legal_entity TEXT,
+       contact_email TEXT,
+       website TEXT,
+       avatar TEXT DEFAULT '',
+       bio TEXT DEFAULT '',
+       verified INTEGER NOT NULL DEFAULT 0,
+       status TEXT NOT NULL DEFAULT 'pending',
+       created_at INTEGER NOT NULL
+     )`,
+    // Which platform users may act on behalf of a brand.
+    `CREATE TABLE IF NOT EXISTS brand_members (
+       brand_id INTEGER NOT NULL,
+       user_id INTEGER NOT NULL,
+       role TEXT NOT NULL DEFAULT 'manager',
+       created_at INTEGER NOT NULL,
+       PRIMARY KEY (brand_id, user_id)
+     )`,
+    // A campaign carries the commercial terms and the market list.
+    // target_countries is a JSON array of ISO codes; delivery re-checks each
+    // one against the jurisdiction rules at serve time regardless.
+    `CREATE TABLE IF NOT EXISTS ad_campaigns (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       brand_id INTEGER NOT NULL,
+       name TEXT NOT NULL,
+       status TEXT NOT NULL DEFAULT 'draft',
+       target_countries TEXT NOT NULL DEFAULT '[]',
+       min_age_override INTEGER,
+       daily_impression_cap INTEGER,
+       starts_at INTEGER,
+       ends_at INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    // Creative is reviewed by a human before it can ever serve.
+    `CREATE TABLE IF NOT EXISTS ad_creatives (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       campaign_id INTEGER NOT NULL,
+       headline TEXT NOT NULL,
+       body TEXT DEFAULT '',
+       image_url TEXT DEFAULT '',
+       cta_label TEXT DEFAULT 'Learn more',
+       cta_url TEXT,
+       factual_only INTEGER NOT NULL DEFAULT 0,
+       review_status TEXT NOT NULL DEFAULT 'pending',
+       review_note TEXT,
+       reviewed_by INTEGER,
+       reviewed_at INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    // Delivery log — powers frequency capping and the composition reporting
+    // brands require under the industry codes.
+    `CREATE TABLE IF NOT EXISTS ad_events (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       creative_id INTEGER NOT NULL,
+       campaign_id INTEGER NOT NULL,
+       user_id INTEGER NOT NULL,
+       kind TEXT NOT NULL,
+       country_code TEXT,
+       age_assured INTEGER NOT NULL DEFAULT 0,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_adev_user_day ON ad_events (user_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_adev_campaign ON ad_events (campaign_id, kind)`,
+
+    // Age assurance attempts. We record the OUTCOME of a check and the
+    // provider's opaque reference — never a document, image, or ID number.
+    `CREATE TABLE IF NOT EXISTS age_checks (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       provider TEXT NOT NULL,
+       provider_ref TEXT NOT NULL,
+       method TEXT,
+       status TEXT NOT NULL DEFAULT 'pending',
+       age_band TEXT,
+       level INTEGER NOT NULL DEFAULT 0,
+       country_code TEXT,
+       created_at INTEGER NOT NULL,
+       resolved_at INTEGER
+     )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_agecheck_ref ON age_checks (provider, provider_ref)`,
+    `CREATE INDEX IF NOT EXISTS idx_agecheck_user ON age_checks (user_id, status)`,
+
+    // Blocking — required by Apple guideline 1.2 and Google Play's UGC policy.
+    // blocker_id no longer sees, or is seen by, blocked_id anywhere in the app.
+    `CREATE TABLE IF NOT EXISTS blocked_users (
+       blocker_id INTEGER NOT NULL,
+       blocked_id INTEGER NOT NULL,
+       created_at INTEGER NOT NULL,
+       PRIMARY KEY (blocker_id, blocked_id)
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_blocked_by ON blocked_users (blocker_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_blocked_of ON blocked_users (blocked_id)`,
+
+    // Error reports from the server and the apps. Grouped by fingerprint so a
+    // hundred occurrences of one bug are one row with a count, not a hundred
+    // rows nobody reads.
+    `CREATE TABLE IF NOT EXISTS error_reports (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       fingerprint TEXT NOT NULL UNIQUE,
+       source TEXT NOT NULL,
+       message TEXT NOT NULL,
+       stack TEXT,
+       route TEXT,
+       platform TEXT,
+       app_version TEXT,
+       count INTEGER NOT NULL DEFAULT 1,
+       users_affected INTEGER NOT NULL DEFAULT 0,
+       status TEXT NOT NULL DEFAULT 'open',
+       first_seen INTEGER NOT NULL,
+       last_seen INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_err_status ON error_reports (status, last_seen)`,
+    // Which users hit which error, so users_affected is a real count rather
+    // than a guess. Kept separate so the group row stays small.
+    `CREATE TABLE IF NOT EXISTS error_occurrences (
+       fingerprint TEXT NOT NULL,
+       user_id INTEGER,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_errocc ON error_occurrences (fingerprint, user_id)`,
+
+    // Product analytics. First-party by design: no third-party SDK, no data
+    // leaving our infrastructure, nothing to add to the privacy policy beyond
+    // "we measure how the product is used".
+    //
+    // Deliberately NOT stored: IP addresses, post content, message text, or any
+    // free-text a user typed. Events are a name plus small structured props.
+    `CREATE TABLE IF NOT EXISTS analytics_events (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER,
+       anon_id TEXT,
+       name TEXT NOT NULL,
+       props TEXT,
+       platform TEXT,
+       country_code TEXT,
+       session_id TEXT,
+       created_at INTEGER NOT NULL
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_name_time ON analytics_events (name, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_user_time ON analytics_events (user_id, created_at)`,
+    `CREATE INDEX IF NOT EXISTS idx_ae_day ON analytics_events (created_at)`,
+
+    // Native push tokens (Expo). Separate from push_subscriptions because web
+    // push needs an endpoint + key pair, while Expo is a single opaque token.
+    `CREATE TABLE IF NOT EXISTS device_tokens (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       token TEXT NOT NULL UNIQUE,
+       platform TEXT,
+       created_at INTEGER NOT NULL,
+       last_seen INTEGER
+     )`,
+    `CREATE INDEX IF NOT EXISTS idx_devtok_user ON device_tokens (user_id)`,
+
+    // Engagement engine — Web Push subscriptions (one row per device/endpoint)
+    `CREATE TABLE IF NOT EXISTS push_subscriptions (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       user_id INTEGER NOT NULL,
+       endpoint TEXT NOT NULL UNIQUE,
+       p256dh TEXT NOT NULL,
+       auth TEXT NOT NULL,
+       created_at INTEGER NOT NULL
+     )`,
+  ];
+  for (const sql of securityTables) {
+    try { await exec(sql); } catch (e) {
+      if (!/already exists/i.test(String(e.message))) console.error('[db] security table error:', e.message);
+    }
+  }
+
+  // Admin is granted only via scripts/promoteAdmin.js — no email-based escalation here
 
   // Seed demo data
   const row = await get('SELECT COUNT(*) as count FROM users');
   const count = row?.count || 0;
 
-  if (count === 0) {
+  // Demo seeding is expensive (bcrypt for every account) and has no place in a
+  // real deployment. Skipped on Workers, where it would also risk the CPU limit
+  // on whichever unlucky request triggers first-run initialisation.
+  const skipSeed = process.env.SKIP_DEMO_SEED === '1'
+    || (typeof globalThis.WebSocketPair !== 'undefined');
+
+  if (count === 0 && !skipSeed) {
     const drinkSets = [
       '{"🥃":85,"🍷":60,"🍺":90,"🍹":70}',
       '{"🍹":95,"🥂":80,"🍸":70,"🥃":40}',
@@ -547,7 +932,7 @@ async function init() {
         [u1, `My therapist asked what makes me feel at peace.\n\nI showed her my bar cart.\n\nShe said that's concerning. I poured her a small Lagavulin.\n\nShe asked for the name of the distillery.\n\nWe're both doing much better now. 🥃\n\n#mentalhealth #therapy #whisky #growth`, '🥃', '📍 Mumbai, India', ''],
         [u2, `Unpopular opinion:\n\n'Networking events' would have 400% better ROI if they served good tequila instead of warm chardonnay in plastic cups.\n\nI have slides. I have data. I have receipts from 47 networking events.\n\nPing me. Let's disrupt the industry. 🌵\n\n#networking #thoughtleadership #tequila`, '🍹', '📍 Delhi, India', ''],
         [u4, `Bought a ₹40,000 Japanese chef's knife.\n\nImmediately used it to cut limes for gin & tonics.\n\nNo regrets. Zero. The knife understands its true calling. It has never been happier.\n\nThis is what finding purpose looks like. 🍸\n\n#japaneseknife #priorities #gin #invest`, '🍸', '📍 Pune, India', ''],
-        [u5, `My 5-year plan:\n\nYear 1: More rosé\nYear 2: More rosé but in nicer places\nYear 3: More rosé in places that have a view\nYear 4: Be known for having good rosé taste\nYear 5: Write a LinkedIn post about my rosé journey\n\nCurrently on Year 3. Absolutely crushing it. 🥂\n\n#goals #planning #rosé #vision`, '🥂', '🇬🇷 Santorini, Greece', 'https://images.unsplash.com/photo-1560148271-8b4d7df01c06?w=600&q=80'],
+        [u5, `My 5-year plan:\n\nYear 1: More rosé\nYear 2: More rosé but in nicer places\nYear 3: More rosé in places that have a view\nYear 4: Be known for having good rosé taste\nYear 5: Still be doing this, with the same people\n\nCurrently on Year 3. Absolutely crushing it. 🥂\n\n#goals #planning #rosé #vision`, '🥂', '🇬🇷 Santorini, Greece', 'https://images.unsplash.com/photo-1560148271-8b4d7df01c06?w=600&q=80'],
         [u3, `Types of wine person:\n\nA) Actually knows wine\nB) Pretends to know wine\nC) Just really likes wine and doesn't care about A or B\n\nI am C. I have been C for 12 years. I will die C.\n\nC is the best type. Find yourself a C. Be the C.\n\n🍷\n\n#wine #bordeaux #authentic #nosommelier`, '🍷', '🇫🇷 Bordeaux, France', ''],
         [u1, `Life hack nobody asked for:\n\nReplace 'synergy' with 'drinks' in any corporate email and re-read it.\n\n"Let's create some synergy" → "Let's create some drinks"\n"We need synergy across teams" → "We need drinks across teams"\n"Our synergy is off the charts" → absolute poetry\n\nYou're welcome. 🥃\n\n#productivity #corporate #synergy #lifehack`, '🥃', '📍 Mumbai, India', ''],
         [u2, `Just learned the actual difference between mezcal and tequila.\n\nI have been ordering the wrong one for 6 years.\n\nThis is the single most valuable piece of knowledge I have acquired in my entire 14-year career. My MBA has nothing on this moment.\n\n🌵 #mezcal #tequila #learning #nevertooolate`, '🍹', '🇲🇽 Oaxaca, Mexico', 'https://images.unsplash.com/photo-1536935338788-846bb9981813?w=600&q=80'],
@@ -576,4 +961,9 @@ async function init() {
   console.log('✅ DB init complete');
 }
 
-module.exports = { client, get, all, run, exec, batch, init };
+// `client` is exposed as a getter so callers still work, but nothing is
+// constructed until it is actually touched.
+module.exports = {
+  get client() { return client_(); },
+  get, all, run, exec, batch, init,
+};

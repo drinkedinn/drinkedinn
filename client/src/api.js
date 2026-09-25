@@ -12,13 +12,38 @@ api.interceptors.request.use(config => {
   return config;
 });
 
+// Endpoints where 401 means "those credentials are wrong", NOT "your session
+// died". Treating them the same logged you out and reloaded the page when you
+// mistyped a password at sign-in, or got your current password wrong while
+// changing it — destroying a perfectly good session and hiding the actual
+// error message behind a full page reload.
+const CREDENTIAL_CHECKS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/change-password',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+];
+
+const isCredentialCheck = (url = '') => CREDENTIAL_CHECKS.some((p) => String(url).includes(p));
+
 api.interceptors.response.use(
   res => res,
   err => {
-    if (err.response?.status === 401) {
+    if (err.response?.status === 401 && !isCredentialCheck(err.config?.url)) {
       localStorage.removeItem('di_token');
       localStorage.removeItem('di_user');
-      window.location.reload();
+      // Reload to a clean signed-out state, but guard against an infinite loop:
+      // only reload once per few seconds so a persistent 401 can't spin forever.
+      try {
+        const last = Number(sessionStorage.getItem('di_401_reload') || 0);
+        if (Date.now() - last > 5000) {
+          sessionStorage.setItem('di_401_reload', String(Date.now()));
+          window.location.reload();
+        }
+      } catch {
+        window.location.reload();
+      }
     }
     return Promise.reject(err);
   }

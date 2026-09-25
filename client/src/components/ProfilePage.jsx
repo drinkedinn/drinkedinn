@@ -5,6 +5,7 @@ import { useTheme } from '../context/ThemeContext';
 import PostCard from './PostCard';
 import EditProfileModal from './EditProfileModal';
 import MyBarPage from './MyBarPage';
+import StreakBadge from './StreakBadge';
 
 export default function ProfilePage({ userId, onBack, onUserClick }) {
   const { user: me, refreshUser } = useAuth();
@@ -98,9 +99,17 @@ export default function ProfilePage({ userId, onBack, onUserClick }) {
 
           <div style={{ marginTop: 12 }}>
             <div style={{ fontSize: 22, fontWeight: 800, color: t.text }}>
-              {profile.name} <span style={{ color: t.link, fontSize: 16 }}>✓</span>
+              {profile.name}
+              {profile.verified ? <span style={{ color: t.link, fontSize: 16 }}> ✓</span> : null}
+              {profile.premium ? <span style={{ fontSize: 14 }}> ⭐</span> : null}
+              {profile.badge ? <span style={{ fontSize: 14 }}> {profile.badge}</span> : null}
             </div>
             <div style={{ color: t.textMuted, fontSize: 14, marginTop: 4 }}>{profile.title}</div>
+            {profile.current_streak >= 2 && (
+              <div style={{ marginTop: 8 }}>
+                <StreakBadge current={profile.current_streak} longest={profile.longest_streak} />
+              </div>
+            )}
             {profile.bio && <div style={{ color: t.textSub, fontSize: 14, marginTop: 8, lineHeight: 1.6 }}>{profile.bio}</div>}
 
             <div style={{ display: 'flex', gap: 24, marginTop: 16 }}>

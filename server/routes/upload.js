@@ -1,42 +1,58 @@
+// server/routes/upload.js
+// Image upload. Buffers in memory, validates by content, strips location
+// metadata, then persists to durable object storage.
+//
+// Previously this wrote to disk with multer's diskStorage and trusted the file
+// extension. On Vercel that disk is ephemeral, so uploads vanished; and an
+// extension check accepts anything renamed to .jpg.
+
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 const auth = require('../middleware/auth');
+const storage = require('../lib/storage');
+const { sanitiseImage } = require('../lib/imageSafety');
 
 const router = express.Router();
 
-// On Vercel /var/task is read-only — use /tmp/uploads
-const uploadDir = process.env.VERCEL
-  ? '/tmp/uploads'
-  : path.join(__dirname, '../uploads');
-try {
-  if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-} catch (e) {
-  console.warn('⚠️  Could not create uploadDir:', e.message);
-}
+const MAX_BYTES = 8 * 1024 * 1024;
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-  },
-});
-
+// Memory storage: nothing touches the filesystem, so there's no ephemeral-disk
+// dependency and no partial file left behind if a request fails.
 const upload = multer({
-  storage,
-  limits: { fileSize: 8 * 1024 * 1024 },
-  fileFilter: (req, file, cb) => {
-    const allowed = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, allowed.includes(ext));
-  },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_BYTES, files: 1 },
 });
 
-router.post('/', auth, upload.single('image'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No image provided' });
-  res.json({ url: `/uploads/${req.file.filename}` });
+router.post('/', auth, (req, res) => {
+  upload.single('image')(req, res, async (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? 'That image is over 8MB.'
+        : 'Could not read that upload.';
+      return res.status(400).json({ error: msg });
+    }
+    if (!req.file?.buffer) return res.status(400).json({ error: 'No image provided' });
+
+    // Identify by magic bytes and strip EXIF (GPS lives there).
+    const safe = sanitiseImage(req.file.buffer, MAX_BYTES);
+    if (!safe.ok) return res.status(415).json({ error: safe.error });
+
+    try {
+      const saved = await storage.put(safe.buffer, {
+        prefix: `u/${req.user.id}`,
+        ext: safe.ext,
+        contentType: safe.mime,
+      });
+
+      if (!storage.isDurable) {
+        console.warn('[upload] stored on local disk — configure R2 before production');
+      }
+      res.json({ url: saved.url, key: saved.key });
+    } catch (e) {
+      console.error('[upload]', e.message);
+      res.status(500).json({ error: 'Upload failed. Try again.' });
+    }
+  });
 });
 
 module.exports = router;

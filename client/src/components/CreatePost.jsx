@@ -18,7 +18,7 @@ export default function CreatePost({ onPost }) {
           onMouseEnter={e => { e.currentTarget.style.borderColor = t.accent; e.currentTarget.style.background = t.accentSoft; }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.cardAlt; }}
         >
-          What's in your glass tonight? 🥃
+          Share a moment
         </div>
       </div>
       <div style={{ display: 'flex', gap: 8, paddingLeft: 56 }}>

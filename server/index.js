@@ -1,109 +1,65 @@
+// server/index.js
+// Node entry point — local development and any Node host.
+//
+// Everything here is deliberately Node-only: the HTTP server, the WebSocket
+// server, local upload serving and the autopost timer. Cloudflare Workers uses
+// worker.js instead, which shares the same Express app from app.js.
+
 require('dotenv').config();
-const express = require('express');
-const cors = require('cors');
+
 const path = require('path');
 const fs = require('fs');
 const http = require('http');
+const express = require('express');
 
-const app = express();
+const db = require('./db');
+const errorReporter = require('./lib/errorReporter');
+const { createApp } = require('./app');
+const config = require('./config');
+
+// Node has a startup phase, so fail loudly here rather than on first request.
+config.assertReady();
+
+errorReporter.installProcessHandlers();
+
+const app = createApp({ isWorker: false });
 const server = http.createServer(app);
 const PORT = process.env.PORT || 4000;
 
-// WebSocket for agent real-time updates
+// Local uploads. In production these live in R2 (see lib/storage.js); this
+// path only exists so development works without cloud credentials.
+const uploadsDir = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+} catch (e) {
+  console.warn('could not create uploads dir:', e.message);
+}
+app.use('/uploads', express.static(uploadsDir));
+app.use('/promo', express.static(path.join(__dirname, '../promo')));
+
+if (process.env.NODE_ENV === 'production') {
+  const dist = path.join(__dirname, '../client/dist');
+  app.use(express.static(dist));
+  app.get('*', (req, res) => res.sendFile(path.join(dist, 'index.html')));
+}
+
+// Error handler last — it only sees what the routes above threw.
+app.use(errorReporter.expressHandler());
+
+// WebSocket for the agent dashboard. Workers would need Durable Objects for
+// this; it is an internal admin surface, so it simply isn't available there.
 let wss;
 try {
   const { WebSocketServer } = require('ws');
   wss = new WebSocketServer({ server });
 } catch {
-  console.log('⚠️  ws package not installed — agent real-time updates disabled');
+  console.log('ws not installed — agent real-time updates disabled');
 }
 
-// Rate limiting (optional dep)
-try {
-  const { rateLimit } = require('express-rate-limit');
-  app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false, message: { error: 'Too many requests.' } }));
-  app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, max: 20, message: { error: 'Too many auth attempts.' } }));
-} catch {}
-
-// On Vercel, /var/task is read-only — use /tmp/uploads instead
-const uploadsDir = process.env.VERCEL
-  ? '/tmp/uploads'
-  : path.join(__dirname, 'uploads');
-try {
-  if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-} catch (e) {
-  console.warn('⚠️  Could not create uploads dir:', e.message);
-}
-
-// On Vercel: kick off DB init immediately at module load (non-blocking).
-// All API requests wait for this promise before being processed.
-const db = require('./db');
-let _dbReady = null;
-if (process.env.VERCEL) {
-  _dbReady = db.init().catch(e => console.error('DB init error:', e.message));
-}
-
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://drinkedinn.com',
-  'https://www.drinkedinn.com',
-  ...(process.env.CLIENT_URL ? [process.env.CLIENT_URL] : []),
-];
-app.use(cors({
-  origin: (origin, cb) => cb(null, !origin || allowedOrigins.some(o => origin.startsWith(o))),
-  credentials: true
-}));
-app.use(express.json());
-app.use('/uploads', express.static(uploadsDir));
-
-// Wait for DB to be ready before processing any request (Vercel cold start)
-app.use(async (req, res, next) => {
-  if (_dbReady) { try { await _dbReady; } catch {} }
-  next();
-});
-
-// Health check for Railway / Vercel
-app.get('/api/health', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
-
-// Serve promo video page
-app.use('/promo', express.static(path.join(__dirname, '../promo')));
-
-// Existing DrinkedInn routes
-app.use('/api/auth',        require('./routes/auth'));
-app.use('/api/posts',       require('./routes/posts'));
-app.use('/api/users',       require('./routes/users'));
-app.use('/api/stories',     require('./routes/stories'));
-app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/upload',      require('./routes/upload'));
-app.use('/api/search',      require('./routes/search'));
-app.use('/api/events',      require('./routes/events'));
-app.use('/api/ratings',     require('./routes/ratings'));
-app.use('/api/collection',  require('./routes/collection'));
-app.use('/api/bucketlist',  require('./routes/bucketlist'));
-app.use('/api/polls',       require('./routes/polls'));
-app.use('/api/groups',      require('./routes/groups'));
-app.use('/api/messages',    require('./routes/messages'));
-app.use('/api/challenges',  require('./routes/challenges'));
-app.use('/api/badges',      require('./routes/badges'));
-app.use('/api/admin',       require('./routes/admin'));
-
-// ===== AI Agent System =====
-const Orchestrator = require('./agents/orchestrator');
-const orchestrator = new Orchestrator(db, {
-  orgName: 'DrinkedInn',
-  orgIndustry: 'Social / Beverages',
-  maxAutoSpend: 500,
-  llm: { provider: process.env.LLM_PROVIDER || 'simulation' }
-});
-
-// Agent API routes
-const agentRoutes = require('./routes/agents')(orchestrator);
-app.use('/api/agents', agentRoutes);
-
-// WebSocket connections for agent dashboard
 if (wss) {
   wss.on('connection', async (ws) => {
-    console.log('🤖 Agent dashboard client connected');
+    const orchestrator = app.locals.orchestrator;
+    if (!orchestrator) return;
     orchestrator.addWSClient(ws);
     try {
       ws.send(JSON.stringify({
@@ -112,47 +68,25 @@ if (wss) {
           agents: orchestrator.getAllStates(),
           stats: await orchestrator.getStats(),
           activities: orchestrator.getActivityFeed(20),
-          pendingApprovals: orchestrator.decisionEngine.getPendingApprovals()
-        }
+          pendingApprovals: orchestrator.decisionEngine.getPendingApprovals(),
+        },
       }));
-    } catch (e) {}
-    ws.on('close', () => {
-      orchestrator.removeWSClient(ws);
-      console.log('🤖 Agent dashboard client disconnected');
-    });
+    } catch {}
+    ws.on('close', () => orchestrator.removeWSClient(ws));
   });
 }
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  app.get('*', (req, res) => res.sendFile(path.join(__dirname, '../client/dist/index.html')));
-}
-
-// Export app for Vercel serverless
 module.exports = app;
 
-// Only start the HTTP server when not running in Vercel
-if (!process.env.VERCEL) {
-  async function startServer() {
+if (require.main === module) {
+  (async () => {
     await db.init();
-
-    // Seed 50 demo accounts on first run (after db is fully initialized)
     try { require('./seedDemo'); } catch (e) { console.error('Demo seed error:', e.message); }
-
-    // Grant admin to platform owner — runs AFTER seed so the user exists
-    try {
-      await db.run("UPDATE users SET is_admin = 1 WHERE email = 'rahul@drinkeden.app'");
-    } catch(e) {}
-
-    // Start auto-posting engine (demo accounts post daily)
+    // Timer-driven autopost is Node-only; Workers uses a cron trigger.
     try { require('./autopost').start(); } catch (e) { console.error('AutoPost error:', e.message); }
 
     server.listen(PORT, () => {
-      console.log(`🍺 DrinkedInn API → http://localhost:${PORT}`);
-      console.log(`🤖 Agent System: ${Object.keys(orchestrator.agents).length} agents active (${orchestrator.getStats().orgAgents} org + ${orchestrator.getStats().platformAgents} platform)`);
-      console.log(`🧠 LLM Provider: ${orchestrator.llm.provider}`);
+      console.log(`DrinkedInn API → http://localhost:${PORT}`);
     });
-  }
-
-  startServer().catch(console.error);
+  })().catch(console.error);
 }

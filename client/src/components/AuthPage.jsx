@@ -63,7 +63,7 @@ export default function AuthPage() {
       <div style={{ marginBottom: 32, textAlign: 'center', animation: 'fadeInUp 0.5s ease', position: 'relative', zIndex: 1 }}>
         <Logo size="lg" />
         <p style={{ color: t.textMuted, marginTop: 10, fontSize: 15, fontStyle: 'italic' }}>
-          Where Professionals Actually Unwind 🥃
+          Stories start here.
         </p>
       </div>
 
@@ -78,7 +78,7 @@ export default function AuthPage() {
               borderBottom: tab === tabId ? `2px solid ${t.accent}` : `2px solid ${t.border}`,
               transition: 'all 0.2s',
             }}>
-              {tabId === 'login' ? '🥃 Sign In' : '🍺 Join the Bar'}
+              {tabId === 'login' ? 'Sign In' : 'Join the Inn'}
             </button>
           ))}
         </div>
@@ -104,7 +104,7 @@ export default function AuthPage() {
             boxShadow: loading ? 'none' : '0 4px 16px rgba(245,166,35,0.35)',
             transition: 'all 0.2s',
           }}>
-            {loading ? 'Pouring...' : tab === 'login' ? 'Sign In 🥃' : 'Join the Bar 🍺'}
+            {loading ? 'One moment…' : tab === 'login' ? 'Sign In' : 'Pull Up a Chair'}
           </button>
 
         </form>

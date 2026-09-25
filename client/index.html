@@ -2,8 +2,46 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <!-- Force the app onto the www host BEFORE anything loads. The bare domain
+         307-redirects /api to www, and browsers drop the Authorization header
+         across that host change → every authed call 401s → reload loop. Pin to www. -->
+    <script>
+      (function () {
+        if (location.hostname === 'drinkedinn.com') {
+          location.replace('https://www.drinkedinn.com' + location.pathname + location.search + location.hash);
+        }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DrinkedInn – Where Professionals Unwind</title>
+    <title>DrinkedInn — Stories start here</title>
+    <meta name="description" content="Your people. Your places. Your stories. Share the moments worth remembering, discover where they happen, and find the people who make them." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.drinkedinn.com/" />
+    <link rel="canonical" href="https://www.drinkedinn.com/" />
+    <meta property="og:title" content="DrinkedInn — Stories start here" />
+    <meta property="og:description" content="Your people. Your places. Your stories. Pull up a chair." />
+    <meta property="og:image" content="https://www.drinkedinn.com/og-image.png" />
+    <meta property="og:site_name" content="DrinkedInn" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="DrinkedInn — Stories start here" />
+    <meta name="twitter:description" content="Your people. Your places. Your stories." />
+    <meta name="twitter:image" content="https://www.drinkedinn.com/og-image.png" />
+
+    <!-- PWA -->
+    <meta name="theme-color" content="#C8831F" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="DrinkedInn" />
+    <link rel="apple-touch-icon" href="/logo-icon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/logo-icon.svg" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <style>
