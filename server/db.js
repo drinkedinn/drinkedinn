@@ -188,7 +188,13 @@ async function init() {
       description TEXT DEFAULT '',
       drink_type TEXT DEFAULT '🥃',
       avatar TEXT DEFAULT '',
-      created_by INTEGER NOT NULL,
+      -- NULLABLE on purpose: when the founder deletes their account the group
+      -- survives for its members, with ownership orphaned rather than the
+      -- group destroyed. While this was NOT NULL, deleting such a user hit a
+      -- FOREIGN KEY violation and account deletion failed outright — see
+      -- lib/deleteUser.js. Existing databases are migrated by
+      -- scripts/sync-schema.js.
+      created_by INTEGER,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (created_by) REFERENCES users(id)
     );

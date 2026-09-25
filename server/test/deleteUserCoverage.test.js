@@ -18,7 +18,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { OWNED, RETAINED, HANDLED_DIRECTLY } = require('../lib/deleteUser');
+const { OWNED, RETAINED, HANDLED_DIRECTLY, NULLED } = require('../lib/deleteUser');
 
 const SCHEMA = fs.readFileSync(path.join(__dirname, '..', 'db.js'), 'utf8');
 
@@ -43,6 +43,28 @@ function tablesReferencingAUser() {
       .join('\n');
     const cols = [...new Set((declarations.match(USER_COL) || []).map((c) => c.toLowerCase()))].sort();
     if (cols.length) found.set(name, cols);
+  }
+  return found;
+}
+
+// Tables declaring a FOREIGN KEY to users(id), with the referencing column.
+//
+// This is the authoritative signal, and the column-name scan above is only a
+// heuristic on top of it. The heuristic missed `drink_groups.created_by` and
+// `places.created_by` — USER_COL matches columns ending in _id, and neither of
+// those does — so a test written precisely to catch unerased user references
+// did not catch two of them. They were worse than a silent data leak: both
+// carry a real FOREIGN KEY, so DELETE FROM users raised
+// SQLITE_CONSTRAINT_FOREIGNKEY and account deletion failed outright for anyone
+// who had founded a group or added a place.
+const USER_FK = /FOREIGN KEY\s*\(\s*(\w+)\s*\)\s*REFERENCES\s+users\s*\(/gi;
+
+function tablesWithUserForeignKey() {
+  const found = new Map();
+  for (const [, name, body] of SCHEMA.matchAll(CREATE_TABLE)) {
+    if (name === 'users') continue;
+    const cols = [...body.matchAll(USER_FK)].map((m) => m[1].toLowerCase());
+    if (cols.length) found.set(name, [...new Set(cols)].sort());
   }
   return found;
 }
@@ -90,6 +112,40 @@ describe('account erasure coverage', () => {
       for (const c of cols) if (!actual.includes(c.toLowerCase())) badCols.push(`${table}.${c}`);
     }
     assert.deepEqual(badCols, [], `OWNED names columns absent from the schema: ${badCols.join(', ')}`);
+  });
+
+  test('every FOREIGN KEY to users(id) is erased, nulled or retained', () => {
+    const fks = tablesWithUserForeignKey();
+    assert.ok(fks.size >= 10, `FK scan found only ${fks.size} tables — the pattern is probably broken`);
+
+    const accounted = new Set([
+      ...OWNED.map(([t]) => t),
+      ...HANDLED_DIRECTLY,
+      ...NULLED.map(([t]) => t),
+      ...RETAINED,
+    ]);
+    const missing = [...fks.keys()].filter((t) => !accounted.has(t)).sort();
+
+    assert.deepEqual(
+      missing,
+      [],
+      `these tables hold a FOREIGN KEY to users(id) that deleteUser.js never clears: ${missing.join(', ')}. ` +
+        'Unlike a missed plain column, this does not merely leave data behind — ' +
+        'DELETE FROM users raises SQLITE_CONSTRAINT_FOREIGNKEY and the account ' +
+        'cannot be deleted at all. Add each to OWNED (delete the rows) or to ' +
+        'NULLED (keep the row, clear the reference).'
+    );
+  });
+
+  test('NULLED names real tables and real columns', () => {
+    const fks = tablesWithUserForeignKey();
+    for (const [table, column] of NULLED) {
+      assert.ok(fks.has(table), `NULLED lists ${table}, which declares no FOREIGN KEY to users(id)`);
+      assert.ok(
+        fks.get(table).includes(column.toLowerCase()),
+        `NULLED says ${table}.${column}, but the FK is on ${fks.get(table).join(', ')}`
+      );
+    }
   });
 
   test('every retained table is a real table', () => {

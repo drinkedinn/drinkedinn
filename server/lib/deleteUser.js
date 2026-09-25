@@ -59,6 +59,19 @@ const OWNED = [
   ['admin_roles', ['user_id']],
 ];
 
+// Columns that point at a user on rows the user does NOT solely own. The row
+// survives; the reference is cleared. Listed separately from OWNED because the
+// row is kept, and from RETAINED because the reference is not.
+//
+// Both of these are FOREIGN KEYs to users(id), so leaving them set makes
+// DELETE FROM users fail outright rather than merely leaving data behind.
+const NULLED = [
+  // A group outlives its founder — other members' posts live in it.
+  ['drink_groups', 'created_by'],
+  // A place is a canonical venue others have saved and visited.
+  ['places', 'created_by'],
+];
+
 // Tables that reference a user and are DELIBERATELY not erased. Listed
 // explicitly so the coverage test can tell a considered exception from a
 // forgotten table.
@@ -77,13 +90,23 @@ const RETAINED = [
 // because they need a subquery or a specific ordering.
 const HANDLED_DIRECTLY = ['posts', 'poll_options', 'featured_posts'];
 
-async function safeRun(sql, args) {
-  try {
-    await db.run(sql, args);
-  } catch (e) {
-    // A table missing on an older DB shouldn't abort the erasure.
-    if (!/no such table|no such column/i.test(String(e.message))) throw e;
-  }
+// Which of the tables we are about to touch actually exist.
+//
+// The per-statement try/catch above is what made this function tolerant of
+// older databases, but it also forced one round trip per statement: ~41 of
+// them, against a Cloudflare Workers budget of 50 per invocation (see
+// CLOUDFLARE.md). Account deletion was one schema addition away from failing
+// outright, and it is the one operation that must not — GDPR and App Store
+// 5.1.1(v) both require it.
+//
+// Asking sqlite_master once lets the rest go out as a single batch, which is
+// one subrequest no matter how many statements it carries. Cost goes from
+// ~41 to 2, and stops growing with the schema.
+async function existingTables() {
+  const rows = await db.all(
+    "SELECT name FROM sqlite_master WHERE type = 'table'"
+  );
+  return new Set(rows.map((r) => String(r.name)));
 }
 
 /**
@@ -95,32 +118,58 @@ async function deleteUserCompletely(userId) {
   const id = Number(userId);
   if (!Number.isInteger(id) || id <= 0) throw new Error('Invalid user id');
 
-  // Poll options belong to the user's posts, not the user — clear them first.
-  await safeRun(
-    'DELETE FROM poll_options WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)',
-    [id]
-  );
-  await safeRun(
-    'DELETE FROM poll_votes WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)',
-    [id]
-  );
-  // Engagement other people left on this user's posts.
-  await safeRun('DELETE FROM cheers WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', [id]);
-  await safeRun('DELETE FROM repours WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', [id]);
-  await safeRun('DELETE FROM comments WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', [id]);
-  await safeRun('DELETE FROM featured_posts WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', [id]);
-  await safeRun('DELETE FROM notifications WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)', [id]);
+  const present = await existingTables();
+  const stmts = [];
+  const add = (table, sql, args) => {
+    if (present.has(table)) stmts.push({ sql, args });
+  };
 
-  for (const [table, cols] of OWNED) {
-    const where = cols.map((c) => `${c} = ?`).join(' OR ');
-    await safeRun(`DELETE FROM ${table} WHERE ${where}`, cols.map(() => id));
+  // Rows that hang off this user's POSTS rather than off the user directly.
+  // These must precede the posts delete, and a batch preserves order.
+  for (const t of ['poll_options', 'poll_votes', 'cheers', 'repours', 'comments', 'featured_posts', 'notifications']) {
+    add(t, `DELETE FROM ${t} WHERE post_id IN (SELECT id FROM posts WHERE user_id = ?)`, [id]);
   }
 
-  await safeRun('DELETE FROM posts WHERE user_id = ?', [id]);
-  await safeRun('UPDATE users SET referred_by = NULL WHERE referred_by = ?', [id]);
-  await db.run('DELETE FROM users WHERE id = ?', [id]);
+  // Everything that references the user directly.
+  for (const [table, cols] of OWNED) {
+    const where = cols.map((c) => `${c} = ?`).join(' OR ');
+    add(table, `DELETE FROM ${table} WHERE ${where}`, cols.map(() => id));
+  }
+
+  add('posts', 'DELETE FROM posts WHERE user_id = ?', [id]);
+
+  // Shared content the member authored but does not solely own. ORPHANED, not
+  // destroyed: a group keeps its members and everything they posted in it, and
+  // a place stays on the map for everyone who saved or visited it.
+  //
+  // This is also what made account deletion fail. Both columns carry a foreign
+  // key to users(id) and neither was erased, so DELETE FROM users raised
+  // SQLITE_CONSTRAINT_FOREIGNKEY for anyone who had ever founded a group or
+  // added a place — the route answered 500 and their account could not be
+  // deleted at all. That is a GDPR / App Store 5.1.1(v) failure, and it
+  // predates the batching above (verified by running the old implementation
+  // against the same fixture).
+  for (const [table, column] of NULLED) {
+    add(table, `UPDATE ${table} SET ${column} = NULL WHERE ${column} = ?`, [id]);
+  }
+
+  add('users', 'UPDATE users SET referred_by = NULL WHERE referred_by = ?', [id]);
+  add('users', 'DELETE FROM users WHERE id = ?', [id]);
+
+  // One round trip, and libsql rolls the whole thing back if any statement
+  // fails — so a partial erasure is no longer a reachable state. That is a
+  // stronger guarantee than the statement-at-a-time version gave, which could
+  // leave a user half-deleted if it died midway.
+  //
+  // Deliberate behaviour change: the old version also swallowed "no such
+  // column", which meant a table whose schema had drifted was silently skipped
+  // while the caller was still told {ok:true} — under-deleting a GDPR erasure
+  // and reporting success. Now a drifted column aborts the batch and raises,
+  // so the request fails visibly instead of lying. Missing TABLES are still
+  // tolerated, via the sqlite_master check above.
+  await db.batch(stmts);
 
   return { ok: true };
 }
 
-module.exports = { deleteUserCompletely, OWNED, RETAINED, HANDLED_DIRECTLY };
+module.exports = { deleteUserCompletely, OWNED, RETAINED, HANDLED_DIRECTLY, NULLED };
