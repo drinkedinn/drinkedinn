@@ -24,20 +24,28 @@ app.listen(PORT);
 
 const httpHandler = httpServerHandler({ port: PORT });
 
-// Workers has no startup hook, and async I/O is forbidden at global scope, so
-// the schema is ensured on the first request and cached for the isolate's life.
-// Every statement is CREATE TABLE IF NOT EXISTS / ALTER guarded, so repeats are
-// free. Production schema changes should still be applied deliberately —
-// see CLOUDFLARE.md.
-let dbReady = null;
-function ensureDb() {
-  if (!dbReady) {
-    dbReady = import('./db.js')
-      .then((m) => (m.init ? m.init() : m.default?.init?.()))
-      .catch((e) => { dbReady = null; throw e; });
-  }
-  return dbReady;
-}
+// The schema is deliberately NOT created here.
+//
+// It used to be: ensureDb() ran db.init() on the first request of each isolate,
+// on the theory that CREATE TABLE IF NOT EXISTS is free to repeat. That theory
+// holds on Node. It does not hold on Workers.
+//
+// Every statement is an HTTP round trip to Turso, and a single Worker invocation
+// may make at most 50 subrequests on the free plan. A full init() measures 76.
+// So it was killed 26 statements short EVERY time — which is why production sat
+// with a half-applied schema (places and admin_roles existed; blocked_users,
+// age_checks, analytics_events and device_tokens did not).
+//
+// The worse half: init() ran BEFORE the route handler, so it spent the whole
+// 50-subrequest budget on a doomed migration and left nothing for the request
+// itself. Every /api call then failed on its first real query, while
+// /api/health?deep=0 — which touches no database — happily answered 200. The
+// error was caught and logged, so this looked like a database outage rather
+// than a self-inflicted budget exhaustion.
+//
+// Schema is now applied out of band, from Node, where no such limit exists:
+//     node scripts/sync-schema.js
+// See CLOUDFLARE.md.
 
 // A path with a file extension in its last segment is an asset request, not a
 // client route. "/profile/42" is a route; "/assets/index-a1b2.js" is a file.
@@ -123,11 +131,6 @@ export default {
 
     const url = new URL(request.url);
 
-    // Only API routes touch the database; static assets must not pay for it.
-    if (url.pathname.startsWith('/api/')) {
-      try { await ensureDb(); } catch (e) { console.error('db init failed:', e.message); }
-    }
-
     // User uploads live in R2, not in the asset bundle. Without this they fell
     // through to the SPA fallback below, so a missing image answered 200 with
     // an HTML page — an <img> would show as broken with no clue why, and a
@@ -181,8 +184,6 @@ export default {
   // Cron triggers replace the timers Node used.
   async scheduled(event, env, ctx) {
     globalThis.__CF_ENV__ = env;
-    await ensureDb().catch((e) => console.error('db init failed:', e.message));
-
     ctx.waitUntil((async () => {
       try {
         if (event.cron === '0 16 * * *') {
