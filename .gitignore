@@ -61,3 +61,4 @@ dump.sql
 *.env
 .dev.vars
 .dev.vars.*
+.env*
