@@ -26,7 +26,7 @@ import secureStore from './lib/secureStore';
 // Until the custom domain is cut over to the Worker, target the Worker
 // directly. EXPO_PUBLIC_API_ORIGIN overrides this for local work.
 export const ORIGIN =
-  process.env.EXPO_PUBLIC_API_ORIGIN || 'https://drinkedinn.madasales15.workers.dev';
+  process.env.EXPO_PUBLIC_API_ORIGIN || 'https://www.drinkedinn.com';
 export const BASE = `${ORIGIN}/api`;
 
 const api = axios.create({

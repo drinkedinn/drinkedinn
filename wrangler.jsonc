@@ -68,16 +68,37 @@
   // },
 
   // ── Custom domain ────────────────────────────────────────────────────
-  // Deliberately COMMENTED OUT. Uncommenting makes `wrangler deploy` try to
-  // attach the route, and the deploy FAILS if the token cannot edit the zone —
-  // so an unattended deploy would start breaking. Attach the domain in the
-  // dashboard first (Workers & Pages -> drinkedinn -> Settings -> Domains &
-  // Routes -> Add custom domain), then uncomment this so the binding is
-  // reproducible from the repo rather than existing only as dashboard state.
+  // A ROUTE, deliberately, not a custom domain.
   //
-  // "routes": [
-  //   { "pattern": "www.drinkedinn.com", "custom_domain": true }
-  // ],
+  // A custom_domain entry makes Cloudflare create a DNS record for the
+  // hostname, which needs zone WRITE. This account's token has zone (read)
+  // only — `wrangler whoami` lists workers_routes (write) and zone (read) —
+  // so custom_domain fails and takes the whole deploy with it. That is what
+  // the previous note here was describing.
+  //
+  // A route needs none of that. www.drinkedinn.com is already an orange-cloud
+  // record in this zone (it answers with a cf-ray header), so the request
+  // reaches Cloudflare's edge either way; the route simply says "hand it to
+  // this Worker" before it is forwarded to the old Vercel origin. No DNS
+  // record is created, changed or deleted.
+  //
+  // Rolling back is therefore re-commenting these three lines and deploying:
+  // DNS still points where it always did, and Vercel is still underneath.
+  //
+  // The /* matters — a bare hostname pattern matches only the root path.
+  // Keep the workers.dev hostname alive ALONGSIDE the route.
+  //
+  // Adding "routes" silently flips this off — wrangler warns, then disables
+  // drinkedinn.madasales15.workers.dev, which started returning error 1042.
+  // That URL is the API origin baked into every Expo build already handed to
+  // a tester, so turning it off breaks their app with no way to push a fix
+  // except a new build. www is the origin for new builds; this stays until
+  // no shipped client points at it.
+  "workers_dev": true,
+
+  "routes": [
+    { "pattern": "www.drinkedinn.com/*", "zone_name": "drinkedinn.com" }
+  ],
 
   "vars": {
     "NODE_ENV": "production",
