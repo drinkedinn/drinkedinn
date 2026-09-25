@@ -51,3 +51,13 @@ dump.sql
 # Cloudflare local dev secrets
 .dev.vars
 .wrangler/
+
+# Every .env variant, not just the few listed above.
+# `vercel env pull` writes .env.production by default, which none of the
+# earlier patterns matched — so a routine pull left real production
+# credentials in a committable file.
+.env.*
+!.env.example
+*.env
+.dev.vars
+.dev.vars.*
