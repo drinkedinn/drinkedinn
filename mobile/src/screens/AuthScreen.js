@@ -269,7 +269,7 @@ export default function AuthScreen() {
                 <Pressable
                   onPress={() =>
                     Linking.openURL(`${ORIGIN}/forgot-password`).catch(() =>
-                      toast?.show('Reach us at hello@drinkedinn.app to reset your password.', 'info')
+                      toast?.show('Could not open the reset page. Check your connection and try again.', 'error')
                     )
                   }
                   style={{ alignSelf: 'center', marginTop: 16 }}

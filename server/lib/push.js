@@ -24,7 +24,8 @@ function ensureConfigured() {
   if (!webpush) return false;
   const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = process.env;
   if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) return false;
-  webpush.setVapidDetails(VAPID_SUBJECT || 'mailto:hello@drinkedinn.app', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  // Push services reject a mailto: on a domain that does not resolve.
+  webpush.setVapidDetails(VAPID_SUBJECT || 'mailto:hello@drinkedinn.com', VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
   configured = true;
   return true;
 }

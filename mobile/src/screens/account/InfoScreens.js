@@ -32,7 +32,7 @@ export function HelpScreen({ navigation }) {
           <SettingsRow
             icon="mail-outline"
             label="Email support"
-            onPress={() => Linking.openURL('mailto:hello@drinkedinn.app?subject=DrinkedInn%20support').catch(() => {})}
+            onPress={() => Linking.openURL('mailto:hello@drinkedinn.com?subject=DrinkedInn%20support').catch(() => {})}
             last
           />
         </SettingsGroup>

@@ -35,7 +35,7 @@ export default function PrivacyScreen({ navigation }) {
           text: 'Request',
           onPress: () => {
             Linking.openURL(
-              `mailto:privacy@drinkedinn.app?subject=Data%20export%20request&body=Please%20export%20the%20data%20for%20${encodeURIComponent(user?.email || '')}.`
+              `mailto:privacy@drinkedinn.com?subject=Data%20export%20request&body=Please%20export%20the%20data%20for%20${encodeURIComponent(user?.email || '')}.`
             ).catch(() => toast?.show('Could not open your mail app.', 'error'));
           },
         },

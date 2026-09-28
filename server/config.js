@@ -45,7 +45,10 @@ const config = {
       port: parseInt(process.env.SMTP_PORT || '587', 10),
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
-      from: process.env.MAIL_FROM || 'DrinkedInn <no-reply@drinkedinn.app>',
+      // drinkedinn.app is NOT a registered domain — no A, no MX, no NS. Resend
+      // rejects a from-address on an unverified domain, so every send would have
+      // 403'd the moment a key was added. The real domain is drinkedinn.com.
+      from: process.env.MAIL_FROM || 'DrinkedInn <no-reply@drinkedinn.com>',
     };
   },
 

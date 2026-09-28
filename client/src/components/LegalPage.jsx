@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const UPDATED = 'February 2026';
-const CONTACT = 'hello@drinkedinn.app';
+const CONTACT = 'hello@drinkedinn.com';
 // Designated child-safety contact. Google Play requires a published point of
 // contact for CSAE matters, distinct from general support, and the same address
 // must be given in the Play Console child-safety declaration.
 const CHILD_SAFETY_CONTACT = 'childsafety@drinkedinn.com';
-const PRIVACY_CONTACT = 'privacy@drinkedinn.app';
+const PRIVACY_CONTACT = 'privacy@drinkedinn.com';
 
 const S = {
   page: { minHeight: '100vh', background: '#FBF8F2', color: '#1E1913', fontFamily: "'Inter', -apple-system, sans-serif" },
