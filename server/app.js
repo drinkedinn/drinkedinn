@@ -54,6 +54,12 @@ function createApp({ isWorker = IS_WORKER } = {}) {
       });
       app.use('/api/auth/login', authLimiter);
       app.use('/api/auth/register', authLimiter);
+      // Reset endpoints belong on the same limiter. forgot-password emails an
+      // arbitrary address on request, so an unlimited one is a spam cannon
+      // pointed at other people's inboxes and at the sending reputation of
+      // drinkedinn.com; reset-password is guessable-token surface.
+      app.use('/api/auth/forgot-password', authLimiter);
+      app.use('/api/auth/reset-password', authLimiter);
     } catch (e) {
       console.warn('rate limiter setup failed:', e.message);
     }

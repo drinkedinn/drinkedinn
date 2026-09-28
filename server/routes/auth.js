@@ -10,7 +10,7 @@ const crypto = require('crypto');
 const db = require('../db');
 const config = require('../config');
 const { requireAuth } = require('../middleware/auth');
-const { sendVerificationEmail } = require('../lib/mailer');
+const { sendVerificationEmail, sendResetEmail } = require('../lib/mailer');
 const jurisdictions = require('../lib/jurisdictions');
 const analytics = require('../lib/analytics');
 
@@ -166,6 +166,119 @@ router.get('/verify', async (req, res) => {
     return res.redirect(`${config.publicBaseUrl}/?verified=1`);
   } catch (e) {
     return res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ── Password reset ──────────────────────────────────────────────────────────
+// These two endpoints did not exist. client/src/api.js has listed
+// /auth/forgot-password and /auth/reset-password among its credential checks
+// since before this file was written, the password_resets table has been in
+// db.js the whole time, and lib/mailer.js already exports sendResetEmail —
+// but nothing ever wired them together. So the web app called a 404 and the
+// mobile app fell back to telling people to email hello@drinkedinn.app, a
+// domain that is not registered and has no MX. Forgetting your password was
+// unrecoverable.
+
+const RESET_TTL_MS = 60 * 60 * 1000;   // one hour
+
+// The emailed token is random; only its SHA-256 lands in the database. A leaked
+// backup or a SELECT therefore yields nothing usable, which is not true of the
+// verify_token column above (raw) — worth fixing there too, but not in this
+// change.
+const hashResetToken = (raw) => crypto.createHash('sha256').update(raw).digest('hex');
+
+router.post('/forgot-password', async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+
+  // ALWAYS the same answer, whether or not the address exists. Saying "no
+  // account with that email" turns this endpoint into a membership oracle:
+  // anyone could test an address against the user table.
+  const sameAnswer = () =>
+    res.json({ ok: true, message: 'If that address has an account, a reset link is on its way.' });
+
+  if (!email) return sameAnswer();
+
+  try {
+    const user = await db.get('SELECT id, email FROM users WHERE email = ?', [email]);
+    if (!user) return sameAnswer();
+
+    // Supersede any outstanding link, so requesting a second one invalidates
+    // the first rather than leaving several live at once.
+    await db.run('UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0', [user.id]);
+
+    const raw = crypto.randomBytes(32).toString('hex');
+    await db.run(
+      'INSERT INTO password_resets (user_id, token, expires_at, used) VALUES (?, ?, ?, 0)',
+      [user.id, hashResetToken(raw), Date.now() + RESET_TTL_MS]
+    );
+
+    const link = `${config.publicBaseUrl}/reset-password?token=${raw}`;
+    try {
+      await sendResetEmail(user.email, link);
+    } catch (e) {
+      // A provider outage must not tell the caller whether the address exists,
+      // so this is logged and swallowed rather than surfaced.
+      console.error('[auth] reset email failed:', e.message);
+    }
+    return sameAnswer();
+  } catch (e) {
+    console.error('[auth] forgot-password failed:', e.message);
+    return sameAnswer();
+  }
+});
+
+router.post('/reset-password', async (req, res) => {
+  const token = String(req.body?.token || '');
+  const newPassword = String(req.body?.password || req.body?.newPassword || '');
+
+  if (!token) return res.status(400).json({ error: 'Missing reset token.' });
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  }
+
+  try {
+    const row = await db.get(
+      'SELECT id, user_id, expires_at, used FROM password_resets WHERE token = ?',
+      [hashResetToken(token)]
+    );
+    // One message for missing, spent and expired alike — which of the three it
+    // is tells an attacker something and tells the user nothing useful.
+    const dead = () => res.status(400).json({ error: 'That reset link is invalid or has expired.' });
+    if (!row || row.used === 1 || Number(row.expires_at) < Date.now()) return dead();
+
+    const hash = await password_.hash(newPassword);
+
+    await db.batch([
+      // token_version invalidates every existing session. Someone resetting a
+      // password may be doing it because another party holds their old one.
+      //
+      // failed_logins and locked_until are cleared deliberately: eight bad
+      // attempts locks the account for LOCK_MINUTES, and forgetting a password
+      // is exactly how people get locked out. Without this the reset appears to
+      // work and the next login still fails.
+      {
+        sql: `UPDATE users
+                 SET password = ?,
+                     token_version = COALESCE(token_version, 0) + 1,
+                     failed_logins = 0,
+                     locked_until = NULL
+               WHERE id = ?`,
+        args: [hash, row.user_id],
+      },
+      { sql: 'UPDATE password_resets SET used = 1 WHERE id = ?', args: [row.id] },
+      // Any other outstanding link for this account dies with it.
+      { sql: 'UPDATE password_resets SET used = 1 WHERE user_id = ? AND used = 0', args: [row.user_id] },
+    ]);
+
+    // Signed in immediately, at the NEW token_version. Returning only
+    // {ok:true} would hand back nothing usable and the bump above has already
+    // killed every prior session, so the user would be bounced to sign-in
+    // straight after a successful reset.
+    const updated = await db.get('SELECT id, token_version FROM users WHERE id = ?', [row.user_id]);
+    return res.json({ ok: true, token: signToken(updated) });
+  } catch (e) {
+    console.error('[auth] reset-password failed:', e.message);
+    return res.status(500).json({ error: 'Could not reset the password.' });
   }
 });
 
