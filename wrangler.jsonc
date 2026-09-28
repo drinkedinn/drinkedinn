@@ -103,6 +103,15 @@
   "vars": {
     "NODE_ENV": "production",
     "PUBLIC_BASE_URL": "https://www.drinkedinn.com",
+
+    // The From on every transactional email. A var, not a secret — it is a
+    // published address, and keeping it here means the only thing left to set
+    // by hand is RESEND_API_KEY.
+    //
+    // This address must be on a domain VERIFIED in the Resend dashboard, or
+    // every send 403s. It previously defaulted to @drinkedinn.app, which is
+    // not a registered domain and so could never be verified.
+    "MAIL_FROM": "DrinkedInn <no-reply@drinkedinn.com>",
     "MIN_AGE": "18"
   }
 
