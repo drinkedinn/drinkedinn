@@ -25,6 +25,31 @@ function StatTile({ value, label, icon }) {
 export default function AccountScreen({ navigation }) {
   const { t, mode, pref } = useTheme();
   const { user, logout, refresh } = useAuth();
+  const [resendState, setResendState] = useState('idle');   // idle | sending | sent
+
+  const resendVerification = useCallback(async () => {
+    setResendState('sending');
+    try {
+      const { data } = await api.post('/auth/resend-verification', {});
+      if (data?.alreadyVerified) {
+        await refresh();
+        setResendState('idle');
+        return;
+      }
+      // The endpoint reports whether a provider actually took the message.
+      // Saying "check your inbox" when nothing was sent is the same lie the
+      // registration response used to tell.
+      if (data?.emailSent) {
+        setResendState('sent');
+      } else {
+        setResendState('idle');
+        Alert.alert('Not sent', 'Email is not set up yet. Please try again later.');
+      }
+    } catch (e) {
+      setResendState('idle');
+      Alert.alert('Not sent', e?.response?.data?.error || 'Could not send the verification email.');
+    }
+  }, [refresh]);
   const [lockOn, setLockOn] = useState(false);
   const [bioAvailable, setBioAvailable] = useState(false);
 
@@ -89,10 +114,26 @@ export default function AccountScreen({ navigation }) {
             <Icon name="mail-unread-outline" size={18} color={t.accentText} />
             <View style={{ flex: 1 }}>
               <Text style={[type.label, { color: t.text }]}>Verify your email</Text>
+              {/* This used to read "Confirm your address to unlock posting
+                  everywhere." Nothing is gated on email_verified — the middleware
+                  that would do it, requireVerified, is exported and applied by no
+                  route — so it was a permanent nag describing a restriction that
+                  does not exist, with no way to clear it. Now it says what
+                  verification is actually good for, and offers the action. */}
               <Text style={[type.caption, { color: t.textSecondary, marginTop: 2 }]}>
-                Confirm your address to unlock posting everywhere.
+                {resendState === 'sent'
+                  ? 'Sent. Check your inbox — the link lasts 24 hours.'
+                  : 'Confirming your address is how you get back in if you forget your password.'}
               </Text>
             </View>
+            {resendState !== 'sent' && (
+              <Button
+                title={resendState === 'sending' ? 'Sending…' : 'Resend'}
+                variant="ghost"
+                disabled={resendState === 'sending'}
+                onPress={resendVerification}
+              />
+            )}
           </View>
         )}
 

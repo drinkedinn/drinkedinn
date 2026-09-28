@@ -7,6 +7,7 @@ import LandingPage from './components/LandingPage.jsx';
 import AgeGate from './components/AgeGate.jsx';
 import { PrivacyPolicy, Terms, Guidelines, ChildSafety } from './components/LegalPage.jsx';
 import { ForgotPassword, ResetPassword } from './components/PasswordReset.jsx';
+import VerifiedBanner from './components/VerifiedBanner.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import './index.css';
@@ -16,6 +17,10 @@ function Root() {
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
+          {/* Outside <Routes> on purpose: it reads ?verified on mount and
+              must survive whatever routing decision follows, including the
+              redirect to /welcome that drops the query string. */}
+          <VerifiedBanner />
           <Routes>
             {/* Legal pages sit outside the age gate and the auth flow — app store
                 reviewers and anyone else must be able to read them with no barrier. */}
