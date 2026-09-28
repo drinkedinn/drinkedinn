@@ -6,6 +6,7 @@ import AdminApp from './admin/AdminApp.jsx';
 import LandingPage from './components/LandingPage.jsx';
 import AgeGate from './components/AgeGate.jsx';
 import { PrivacyPolicy, Terms, Guidelines, ChildSafety } from './components/LegalPage.jsx';
+import { ForgotPassword, ResetPassword } from './components/PasswordReset.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { ThemeProvider } from './context/ThemeContext.jsx';
 import './index.css';
@@ -22,6 +23,14 @@ function Root() {
             <Route path="/terms" element={<Terms />} />
             <Route path="/guidelines" element={<Guidelines />} />
             <Route path="/child-safety" element={<ChildSafety />} />
+
+            {/* Password reset sits out here for the same reason: someone
+                locked out of their account cannot be asked to clear an age
+                gate first. The server emails a link to /reset-password, and
+                without these two routes it fell through to /* and rendered
+                the sign-in form — the token was never read. */}
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             <Route
               path="/*"

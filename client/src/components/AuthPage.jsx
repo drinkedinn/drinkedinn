@@ -8,7 +8,11 @@ export default function AuthPage() {
   const { login } = useAuth();
   const { t, isDark, toggleTheme } = useTheme();
   const [tab, setTab] = useState('login');
-  const [form, setForm] = useState({ name: '', email: '', password: '', title: '' });
+  // date_of_birth is REQUIRED by POST /auth/register (server/routes/auth.js:84).
+  // It was absent from this form, so every web sign-up returned 400 "Date of
+  // birth is required to confirm your age." with no field on screen to fix it.
+  // Mobile has always sent it; only the web client was broken.
+  const [form, setForm] = useState({ name: '', email: '', password: '', title: '', date_of_birth: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +22,10 @@ export default function AuthPage() {
     e.preventDefault();
     setError(''); setLoading(true);
     try {
-      const { data } = await api.post(tab === 'login' ? '/auth/login' : '/auth/register', form);
+      const payload = tab === 'login'
+        ? { email: form.email, password: form.password }
+        : form;
+      const { data } = await api.post(tab === 'login' ? '/auth/login' : '/auth/register', payload);
       login(data.token, data.user);
     } catch (err) {
       setError(err.response?.data?.error || 'Something went wrong');
@@ -87,7 +94,25 @@ export default function AuthPage() {
           {tab === 'register' && inp('name', 'Full Name')}
           {inp('email', 'Email Address', 'email')}
           {inp('password', 'Password', 'password')}
+          {tab === 'register' && (
+            <>
+              {/* A date input renders no placeholder, so without a visible
+                  label this is an unexplained empty box. */}
+              <label style={{ display: 'block', color: t.textMuted, fontSize: 12, marginBottom: 6, marginLeft: 4 }}>
+                Date of birth — used to check your age, never shown on your profile
+              </label>
+              {inp('date_of_birth', 'Date of birth', 'date')}
+            </>
+          )}
           {tab === 'register' && inp('title', 'Your Title (e.g. VP of Vibes 🥂)')}
+
+          {tab === 'login' && (
+            <div style={{ textAlign: 'right', marginTop: -4, marginBottom: 14 }}>
+              <a href="/forgot-password" style={{ color: t.accent, fontSize: 13, textDecoration: 'none' }}>
+                Forgot your password?
+              </a>
+            </div>
+          )}
 
           {error && (
             <div style={{ background: t.dangerBg, border: `1px solid ${t.dangerBorder}`, borderRadius: 10, padding: '10px 14px', color: t.danger, fontSize: 13, marginBottom: 16 }}>
