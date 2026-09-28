@@ -153,11 +153,25 @@ router.post('/register', async (req, res) => {
 // ── Verify email ────────────────────────────────────────────────────────────
 router.get('/verify', async (req, res) => {
   const token = String(req.query.token || '');
-  if (!token) return res.status(400).json({ error: 'Missing token' });
+  if (!token) return res.redirect(`${config.publicBaseUrl}/?verified=missing`);
 
   try {
     const user = await db.get('SELECT id FROM users WHERE verify_token = ?', [token]);
-    if (!user) return res.status(400).json({ error: 'Invalid or expired verification link' });
+
+    // A miss is NOT an error page. This is a URL opened in a browser from an
+    // email, and it is routinely fetched before the human gets to it: Outlook
+    // Safe Links, Proofpoint, Barracuda and various inbox prefetchers GET every
+    // link they see. Verification is single-use (the UPDATE below clears
+    // verify_token), so the scanner spends the token and the user's own click
+    // lands here — as did any refresh or second click, with no scanner
+    // involved at all.
+    //
+    // Returning res.status(400).json(...) meant they saw the literal text
+    // {"error":"Invalid or expired verification link"} in their browser, while
+    // their account was in fact verified. There is no resend route, so that
+    // dead end was permanent. Redirecting instead makes the second visit
+    // harmless and idempotent.
+    if (!user) return res.redirect(`${config.publicBaseUrl}/?verified=already`);
 
     await db.run(
       'UPDATE users SET email_verified = 1, verify_token = NULL WHERE id = ?',
@@ -165,7 +179,8 @@ router.get('/verify', async (req, res) => {
     );
     return res.redirect(`${config.publicBaseUrl}/?verified=1`);
   } catch (e) {
-    return res.status(500).json({ error: 'Verification failed' });
+    console.error('[auth] verify failed:', e.message);
+    return res.redirect(`${config.publicBaseUrl}/?verified=error`);
   }
 });
 
@@ -179,7 +194,8 @@ router.get('/verify', async (req, res) => {
 // domain that is not registered and has no MX. Forgetting your password was
 // unrecoverable.
 
-const RESET_TTL_MS = 60 * 60 * 1000;   // one hour
+const RESET_TTL_MS = 60 * 60 * 1000;      // a link is good for one hour
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000; // and at most one is sent every two minutes
 
 // The emailed token is random; only its SHA-256 lands in the database. A leaked
 // backup or a SELECT therefore yields nothing usable, which is not true of the
@@ -201,6 +217,30 @@ router.post('/forgot-password', async (req, res) => {
   try {
     const user = await db.get('SELECT id, email FROM users WHERE email = ?', [email]);
     if (!user) return sameAnswer();
+
+    // Throttle HERE, in the database, not in middleware.
+    //
+    // app.js mounts express-rate-limit inside `if (!isWorker)`, because an
+    // in-process limiter is meaningless when every isolate has its own memory.
+    // Production IS Workers. So adding these routes to that limiter — which is
+    // what I did first — protects local development and nothing else: in
+    // production this endpoint would mail an arbitrary address as fast as it
+    // could be called, which is a spam cannon aimed at other people's inboxes
+    // and at the sending reputation of drinkedinn.com.
+    //
+    // password_resets has no created_at, but expires_at is exactly
+    // created + RESET_TTL_MS, so the creation time is recoverable without a
+    // schema change.
+    const recent = await db.get(
+      'SELECT 1 AS x FROM password_resets WHERE user_id = ? AND used = 0 AND expires_at > ?',
+      [user.id, Date.now() + RESET_TTL_MS - RESEND_COOLDOWN_MS]
+    );
+    // Returns the same answer as everything else here. Telling the caller they
+    // are being throttled confirms the address exists, which is the one thing
+    // this endpoint is built not to reveal. Crucially it does NOT supersede the
+    // outstanding link first — otherwise a double-click would invalidate the
+    // link already in the user's inbox and send nothing to replace it.
+    if (recent) return sameAnswer();
 
     // Supersede any outstanding link, so requesting a second one invalidates
     // the first rather than leaving several live at once.

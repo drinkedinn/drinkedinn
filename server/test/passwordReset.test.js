@@ -61,9 +61,32 @@ function call(method, path, body) {
   });
 }
 
-const tokenFrom = (link) => new URL(link).searchParams.get('token');
+const tokenFrom = (link) => {
+  assert.ok(link, 'no reset email was sent — was the request throttled?');
+  return new URL(link).searchParams.get('token');
+};
+
+// forgot-password will not send twice inside RESEND_COOLDOWN_MS. The tests
+// below legitimately need several links in a row, so this models time passing
+// rather than sleeping through it.
+//
+// password_resets has no created_at; expires_at is created + RESET_TTL_MS, so
+// winding expires_at back is what makes a row look older. The value chosen
+// leaves the row comfortably UNEXPIRED (about 58 minutes to run) while placing
+// its creation just outside the cooldown — otherwise a test meant to prove a
+// link was superseded would pass because it had expired instead.
+const RESET_TTL_MS = 60 * 60 * 1000;
+const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
+
+async function passCooldown() {
+  await db.run(
+    'UPDATE password_resets SET expires_at = ? WHERE used = 0',
+    [Date.now() + RESET_TTL_MS - RESEND_COOLDOWN_MS - 1000]
+  );
+}
 
 async function requestReset(email = EMAIL) {
+  await passCooldown();
   captured = null;
   const res = await call('POST', '/api/auth/forgot-password', { email });
   return { res, link: captured && captured.link };
@@ -159,6 +182,29 @@ describe('password reset', () => {
       200,
       'reset succeeded but the account is still unusable'
     );
+  });
+
+  test('will not send a second link inside the cooldown', async () => {
+    // Without this the endpoint mails an arbitrary address as fast as it can be
+    // called. express-rate-limit does not cover it: app.js mounts the limiter
+    // inside `if (!isWorker)`, and production is Workers — so the throttle has
+    // to live in the database to mean anything.
+    await requestReset();                       // passCooldown, then one send
+    captured = null;
+    const second = await call('POST', '/api/auth/forgot-password', { email: EMAIL });
+
+    assert.equal(second.code, 200, 'throttling must not be visible in the status');
+    assert.equal(captured, null, 'a second email was sent inside the cooldown');
+  });
+
+  test('throttling does not invalidate the link already in the inbox', async () => {
+    // A double-click must not supersede the link the user already has and then
+    // decline to send a replacement, which would leave them with nothing.
+    const token = tokenFrom((await requestReset()).link);
+    await call('POST', '/api/auth/forgot-password', { email: EMAIL });   // throttled
+
+    const done = await call('POST', '/api/auth/reset-password', { token, password: 'StillValid12345' });
+    assert.equal(done.code, 200, 'the original link stopped working after a throttled retry');
   });
 
   test('rejects garbage input', async () => {
