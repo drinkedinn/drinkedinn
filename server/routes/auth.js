@@ -20,6 +20,16 @@ try { ({ z } = require('zod')); } catch {}
 
 const router = express.Router();
 
+// Emailed tokens are random; only their SHA-256 is stored. A leaked backup
+// or a stray SELECT then yields nothing usable. Shared by BOTH flows —
+// verification kept its token in plaintext until now, while reset did not.
+const hashToken = (raw) => crypto.createHash('sha256').update(String(raw)).digest('hex');
+
+// A verification link is good for a day. It had no expiry at all, so one
+// captured from an old mailbox stayed valid forever.
+const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
+const VERIFY_RESEND_COOLDOWN_MS = 2 * 60 * 1000;
+
 const LOCK_THRESHOLD = 8;
 const LOCK_MINUTES = 15;
 
@@ -122,14 +132,22 @@ router.post('/register', async (req, res) => {
         name, email.toLowerCase(), hash,
         title || 'DrinkedInn Member', avatar,
         referralCode, referredBy, date_of_birth, country || null,
-        verifyToken, Date.now(),
+        hashToken(verifyToken), Date.now(),
       ]
     );
 
-    // Send verification email (non-fatal if SMTP not configured)
+    // Send verification email (non-fatal if no provider is configured).
+    //
+    // The RESULT is kept, because sendMail does not throw when nothing is
+    // configured — it logs and returns {via:'log'}. This handler answered
+    // "Account created. Check your email to verify." in that case, which is
+    // a lie: there is no mail to check. With no provider on the Worker that
+    // was EVERY registration.
+    let emailSent = false;
     try {
       const link = `${config.publicBaseUrl}/api/auth/verify?token=${verifyToken}`;
-      await sendVerificationEmail(email.toLowerCase(), link);
+      const result = await sendVerificationEmail(email.toLowerCase(), link);
+      emailSent = !!result && result.via !== 'log';
     } catch (e) {
       console.warn('[register] verification email failed:', e.message);
     }
@@ -140,7 +158,15 @@ router.post('/register', async (req, res) => {
     );
     analytics.track('signup_completed', { userId: user.id, country, props: { has_dob: !!date_of_birth } });
     const token = signToken(user);
-    res.status(201).json({ token, user, verified: false, message: 'Account created. Check your email to verify.' });
+    res.status(201).json({
+      token,
+      user,
+      verified: false,
+      emailSent,
+      message: emailSent
+        ? 'Account created. Check your email to verify.'
+        : "Account created. We couldn't send the verification email just now — you can ask for it again from your profile.",
+    });
   } catch (err) {
     if (err.message && err.message.includes('UNIQUE')) {
       return res.status(409).json({ error: 'Could not create account with those details.' });
@@ -156,7 +182,16 @@ router.get('/verify', async (req, res) => {
   if (!token) return res.redirect(`${config.publicBaseUrl}/?verified=missing`);
 
   try {
-    const user = await db.get('SELECT id FROM users WHERE verify_token = ?', [token]);
+    const user = await db.get(
+      'SELECT id, verify_sent_at FROM users WHERE verify_token = ?',
+      [hashToken(token)]
+    );
+
+    // Expired counts as a miss and redirects the same way — the link is dead
+    // either way, and the difference is not something the visitor can act on.
+    if (user && Number(user.verify_sent_at || 0) + VERIFY_TTL_MS < Date.now()) {
+      return res.redirect(`${config.publicBaseUrl}/?verified=expired`);
+    }
 
     // A miss is NOT an error page. This is a URL opened in a browser from an
     // email, and it is routinely fetched before the human gets to it: Outlook
@@ -181,6 +216,58 @@ router.get('/verify', async (req, res) => {
   } catch (e) {
     console.error('[auth] verify failed:', e.message);
     return res.redirect(`${config.publicBaseUrl}/?verified=error`);
+  }
+});
+
+// ── Resend verification ─────────────────────────────────────────────────────
+// There was no way to get a second verification email. Verification is
+// single-use, and mail security scanners (Outlook Safe Links, Proofpoint)
+// routinely GET links before the human does, so the first link could be spent
+// before anyone saw it — permanently, with no route to reissue. Registration
+// could also fail to send at all and still tell the user to check their inbox.
+//
+// Authenticated, because /register already returns a session token: an
+// unverified account is signed in, it just has an unverified address.
+router.post('/resend-verification', requireAuth, async (req, res) => {
+  try {
+    const user = await db.get(
+      'SELECT id, email, email_verified, verify_sent_at FROM users WHERE id = ?',
+      [req.user.id]
+    );
+    if (!user) return res.status(404).json({ error: 'Account not found.' });
+    if (user.email_verified === 1) return res.json({ ok: true, alreadyVerified: true });
+
+    // Same cooldown shape as the password reset, for the same reason: this
+    // sends mail on request. Unlike that one there is no enumeration concern —
+    // the caller is authenticated and can only ever target their own address —
+    // so saying plainly that they are being throttled is safe and more useful.
+    const last = Number(user.verify_sent_at || 0);
+    if (last && Date.now() - last < VERIFY_RESEND_COOLDOWN_MS) {
+      const wait = Math.ceil((VERIFY_RESEND_COOLDOWN_MS - (Date.now() - last)) / 1000);
+      return res.status(429).json({ error: `Please wait ${wait}s before asking again.` });
+    }
+
+    const verifyToken = crypto.randomBytes(32).toString('hex');
+    await db.run(
+      'UPDATE users SET verify_token = ?, verify_sent_at = ? WHERE id = ?',
+      [hashToken(verifyToken), Date.now(), user.id]
+    );
+
+    let emailSent = false;
+    try {
+      const link = `${config.publicBaseUrl}/api/auth/verify?token=${verifyToken}`;
+      const result = await sendVerificationEmail(user.email, link);
+      emailSent = !!result && result.via !== 'log';
+    } catch (e) {
+      console.error('[auth] resend verification failed:', e.message);
+    }
+
+    // Reports honestly whether anything was actually sent, so the client can
+    // say "check your inbox" only when that is true.
+    return res.json({ ok: true, emailSent });
+  } catch (e) {
+    console.error('[auth] resend-verification failed:', e.message);
+    return res.status(500).json({ error: 'Could not resend the verification email.' });
   }
 });
 
