@@ -12,12 +12,21 @@ export default function Button({
 }) {
   const { t, elevation } = useTheme();
 
-  const palette = {
+  const palettes = {
     primary: { bg: t.accent, fg: t.textOnAccent, border: 'transparent' },
     secondary: { bg: 'transparent', fg: t.text, border: t.borderStrong },
     subtle: { bg: t.surfaceAlt, fg: t.text, border: 'transparent' },
     danger: { bg: t.dangerSoft, fg: t.danger, border: 'transparent' },
-  }[variant];
+  };
+
+  // Falls back instead of throwing. An unrecognised variant left `palette`
+  // undefined and took the next line down with it — and since a render
+  // error propagates to the nearest boundary, and the only boundary in this
+  // app wraps the whole tree, one wrong prop blacked out the entire UI
+  // rather than one button. That is not hypothetical: a variant="ghost" on
+  // the Profile tab crashed the app on every open, and Profile is the only
+  // route to account deletion, Safety Center and Blocked accounts.
+  const palette = palettes[variant] || palettes.primary;
 
   const dims = {
     sm: { pv: 8, ph: 14, font: 13, icon: 16 },

@@ -128,8 +128,8 @@ export default function AccountScreen({ navigation }) {
             </View>
             {resendState !== 'sent' && (
               <Button
-                title={resendState === 'sending' ? 'Sending…' : 'Resend'}
-                variant="ghost"
+                label={resendState === 'sending' ? 'Sending…' : 'Resend'}
+                variant="subtle"
                 disabled={resendState === 'sending'}
                 onPress={resendVerification}
               />

@@ -43,7 +43,7 @@ router.delete('/me', auth, async (req, res) => {
 
 router.get('/me', auth, async (req, res) => {
   try {
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, email_verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
@@ -90,7 +90,7 @@ router.put('/me', auth, async (req, res) => {
         }
       }
     }
-    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
+    const user = await db.get('SELECT id, name, email, title, avatar, bio, drinks, onboarded, is_admin, verified, email_verified, premium, badge, current_streak, longest_streak, created_at, interests, home_city, country_code FROM users WHERE id = ?', [req.user.id]);
     const connRow = await db.get('SELECT COUNT(*) as count FROM connections WHERE user_id = ?', [req.user.id]);
     const postRow = await db.get('SELECT COUNT(*) as count FROM posts WHERE user_id = ?', [req.user.id]);
     const connections = connRow?.count || 0;
