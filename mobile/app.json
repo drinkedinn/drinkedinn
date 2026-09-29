@@ -13,12 +13,12 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.drinkedinn.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "DrinkedInn needs access to your photos so you can share pictures of your pours.",
-        "NSCameraUsageDescription": "DrinkedInn uses your camera so you can photograph the drink you're sharing.",
+        "NSPhotoLibraryUsageDescription": "DrinkedInn needs access to your photos so you can share the moments you post.",
+        "NSCameraUsageDescription": "DrinkedInn uses your camera so you can capture the moment you are sharing.",
         "NSFaceIDUsageDescription": "DrinkedInn uses Face ID to unlock the app when app lock is turned on.",
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -55,8 +55,8 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "DrinkedInn needs access to your photos so you can share pictures of your pours.",
-          "cameraPermission": "DrinkedInn uses your camera so you can photograph the drink you're sharing."
+          "photosPermission": "DrinkedInn needs access to your photos so you can share the moments you post.",
+          "cameraPermission": "DrinkedInn uses your camera so you can capture the moment you are sharing."
         }
       ],
       [
