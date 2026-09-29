@@ -111,6 +111,9 @@ export function PrivacyPolicy() {
         <li style={S.li}><strong>Social graph</strong> — who you connect with, and which posts you cheer or comment on.</li>
         <li style={S.li}><strong>Technical data</strong> — IP address (used for rate limiting and abuse prevention), device type, and your timezone offset so notifications respect your quiet hours.</li>
         <li style={S.li}><strong>Push tokens</strong> — only if you turn on push notifications.</li>
+        <li style={S.li}><strong>Places you tag and visit</strong> — the venues you add or mark as visited, their coordinates, and the country of each visit. This is what builds your Places and Trips. It comes from what you tag, never from your device: DrinkedInn does not read your GPS and never asks for location permission.</li>
+        <li style={S.li}><strong>An app install identifier</strong> — a random id for your installation, plus a session id, so we can count how many people used a feature rather than how many times it was opened. It is not an advertising identifier and is not shared.</li>
+        <li style={S.li}><strong>Crash and error diagnostics</strong> — when something breaks: the error message and stack trace, the screen it happened on, your app version and platform, and which account hit it, so we know how many people are affected.</li>
       </ul>
 
       <h2 style={S.h2}>How we measure the product</h2>
@@ -129,7 +132,9 @@ export function PrivacyPolicy() {
 
       <h2 style={S.h2}>What we don't collect</h2>
       <p style={S.p}>
-        We do not collect precise location data, contacts, health data, or advertising identifiers.
+        We do not read your device's location — there is no location permission in this app — and we do
+        not collect your contacts, health data, or advertising identifiers. The only place information
+        we hold is the venue you chose to tag, described above.
         We never see your password — it is hashed with bcrypt before storage and cannot be reversed.
       </p>
 
@@ -226,9 +231,18 @@ export function Terms() {
 
       <h2 style={S.h2}>Moderation and termination</h2>
       <p style={S.p}>
-        We may remove content or suspend accounts that break these terms. You can delete your account
-        at any time from Account → Privacy &amp; data. We'll give notice before terminating an account
-        unless doing so would risk harm to others or breach the law.
+        There is <strong>zero tolerance</strong> for objectionable content and for abusive behaviour
+        towards other members. Content that harasses, threatens, sexualises anyone, or targets a person
+        or group with hate is removed and the account behind it suspended — not warned.
+      </p>
+      <p style={S.p}>
+        We aim to act on every report within <strong>24 hours</strong>. Reports involving a child&apos;s
+        safety or an immediate risk of harm are triaged ahead of everything else.
+      </p>
+      <p style={S.p}>
+        We may also remove content or suspend accounts that break these terms in other ways. You can
+        delete your account at any time from Account → Privacy &amp; data. We&apos;ll give notice before
+        terminating an account unless doing so would risk harm to others or breach the law.
       </p>
 
       <h2 style={S.h2}>The service is provided as-is</h2>
@@ -303,8 +317,9 @@ export function Guidelines() {
 
       <h2 style={S.h2}>Reporting</h2>
       <p style={S.p}>
-        Use the options menu on any post to report it. We review reports and may remove content or
-        suspend accounts. Serious safety concerns can go straight to{' '}
+        Use the options menu on any post, story, comment, profile, message, group or event to report it,
+        and Block on the same menu to stop someone reaching you. We act on reports within 24 hours and
+        may remove content or suspend accounts. Serious safety concerns can go straight to{' '}
         <a href={`mailto:${CONTACT}`} style={S.a}>{CONTACT}</a>.
       </p>
     </Shell>
