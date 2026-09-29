@@ -39,7 +39,15 @@ router.post('/', auth, (req, res) => {
 
     try {
       const saved = await storage.put(safe.buffer, {
-        prefix: `u/${req.user.id}`,
+        // MUST start with "uploads/". worker.js routes to R2 only for paths
+        // under /uploads/ (its pathname.startsWith check), and serveUpload
+        // derives the R2 key as pathname.slice(1) — so the key and the public
+        // path have to be the same string modulo the leading slash. With a bare
+        // `u/<id>` prefix the URL came out as https://host/u/<id>/… , which
+        // never reached serveUpload at all: it fell through to the SPA asset
+        // handler and 404'd. Every photo posted from the app was a permanently
+        // broken image.
+        prefix: `uploads/u/${req.user.id}`,
         ext: safe.ext,
         contentType: safe.mime,
       });

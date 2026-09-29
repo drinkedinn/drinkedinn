@@ -102,7 +102,11 @@ async function put(buffer, { prefix = 'uploads', ext = '.jpg', contentType = 'ap
   const full = path.join(localUploadDir(), key);
   await fs.promises.mkdir(path.dirname(full), { recursive: true });
   await fs.promises.writeFile(full, buffer);
-  return { url: `/uploads/${key}`, key, backend: 'local' };
+  // Callers pass a prefix that already begins with "uploads/" so the key and
+  // the served path match on Workers. Prefixing again would produce
+  // /uploads/uploads/… — the exact double-prefix the r2 branch warns about.
+  const localUrl = key.startsWith('uploads/') ? `/${key}` : `/uploads/${key}`;
+  return { url: localUrl, key, backend: 'local' };
 }
 
 /** Remove an object. Best-effort — never throws into a request. */
