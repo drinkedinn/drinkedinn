@@ -10,6 +10,9 @@
 const { test, describe, before } = require('node:test');
 const assert = require('node:assert');
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const { db, setup, makeUser, makePost } = require('./helpers');
 const { excludeBlocked, isBlocked, blockedIds, filterBlocked } = require('../lib/blocking');
 
@@ -83,6 +86,40 @@ describe('blocking enforcement', () => {
     const authors = posts.map((p) => p.user_id);
     assert.ok(!authors.includes(bob.id), 'blocked author must not appear in post search');
     assert.ok(authors.includes(carol.id));
+  });
+
+  test('the stories rail excludes a blocked member (query read from the route)', async () => {
+    // Read from routes/stories.js rather than retyped here. Every other case in
+    // this file inlines its SQL, which is how this one was missed in the first
+    // place: the route had no filter and no test noticed, because the test
+    // would have been exercising its own copy of a correct query.
+    const src = fs.readFileSync(path.join(__dirname, '..', 'routes', 'stories.js'), 'utf8');
+    const match = src.match(/SELECT s\.\*[\s\S]*?ORDER BY s\.created_at DESC/);
+    assert.ok(match, 'could not find the stories query — has routes/stories.js been restructured?');
+
+    // The source holds the template EXPRESSION, not the expanded SQL — the
+    // literal text is `AND ${excludeBlocked('s.user_id')}`, which only becomes
+    // NOT IN once the route runs. So assert on the call, then expand it here
+    // the same way the route does and run the result.
+    const raw = match[0];
+    assert.ok(
+      /excludeBlocked\(\s*['"`]s\.user_id['"`]\s*\)/.test(raw),
+      'the stories query carries no blocking filter, so a blocked member stays in the rail'
+    );
+
+    const sql = raw.replace(/\$\{excludeBlocked\((['"`])s\.user_id\1\)\}/, excludeBlocked('s.user_id'));
+    assert.ok(sql.includes('NOT IN'), 'the filter did not expand — the test would prove nothing');
+
+    await db.run('INSERT INTO stories (user_id, drink) VALUES (?, ?)', [bob.id, '🥃']);
+    await db.run('INSERT INTO stories (user_id, drink) VALUES (?, ?)', [carol.id, '🍷']);
+
+    // Two placeholders per excludeBlocked() occurrence. A wrong count throws
+    // rather than silently filtering nothing, which is the other failure mode.
+    const rows = await db.all(sql, [alice.id, alice.id]);
+    const ids = rows.map((r) => r.user_id);
+
+    assert.ok(!ids.includes(bob.id), 'a blocked member is still in the stories rail');
+    assert.ok(ids.includes(carol.id), 'an unrelated member was filtered out too');
   });
 
   test('in-memory filtering hides blocked authors from a fetched list', async () => {
