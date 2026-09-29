@@ -15,6 +15,7 @@ import { Screen, Header, Icon, Avatar, Bounce, EmptyState, FadeIn, useToast } fr
 import { PostSkeleton } from '../components/ui/Skeleton';
 import PostCard from '../components/PostCard';
 import { navigateByName } from '../lib/nav';
+import useCommentActions from './useCommentActions';
 
 function timeAgo(ts) {
   if (!ts) return '';
@@ -87,6 +88,12 @@ export default function PostDetailScreen({ navigation, route }) {
   const { t } = useTheme();
   const { user } = useAuth();
   const toast = useToast();
+  // Comments were the only UGC surface in the app with no report or block
+  // affordance, while the published Child Safety Standards said otherwise.
+  const { openCommentMenu } = useCommentActions({
+    onAuthorBlocked: (authorId) =>
+      setComments((list) => list.filter((c) => String(c.user_id) !== String(authorId))),
+  });
 
   const incoming = route.params?.post || {};
   const postId = incoming.id;
@@ -204,7 +211,21 @@ export default function PostDetailScreen({ navigation, route }) {
                   <View style={[styles.bubble, { backgroundColor: t.surface, borderColor: t.border }]}>
                     <View style={styles.bubbleHead}>
                       <Text style={[type.label, { color: t.text }]}>{item.name}</Text>
-                      <Text style={[type.caption, { color: t.textMuted }]}>{timeAgo(item.created_at)}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={[type.caption, { color: t.textMuted }]}>{timeAgo(item.created_at)}</Text>
+                        {/* Apple 1.2 and Play UGC both require report AND block to be
+                            reachable from the content itself, not only from a profile. */}
+                        <Bounce
+                          haptic="light"
+                          scaleTo={0.9}
+                          onPress={() => openCommentMenu(item)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Options for ${item.name}'s comment`}
+                          hitSlop={10}
+                        >
+                          <Icon name="ellipsis-horizontal" size={15} color={t.textMuted} />
+                        </Bounce>
+                      </View>
                     </View>
                     <Text style={[type.body, { color: t.textSecondary, lineHeight: 20, marginTop: 3 }]}>
                       {item.content}

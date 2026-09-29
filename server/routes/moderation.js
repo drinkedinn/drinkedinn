@@ -60,6 +60,12 @@ router.get('/queue', requirePermission('reports.read'), async (req, res) => {
               asg.name  AS assignee_name,
               CASE WHEN r.target_type = 'post' THEN (SELECT content FROM posts WHERE id = r.target_id) END AS post_content,
               CASE WHEN r.target_type = 'user' THEN (SELECT name    FROM users WHERE id = r.target_id) END AS target_user_name,
+              -- Comment reports arrived with nothing attached: the queue resolved
+              -- only 'post' and 'user', so a moderator saw a reason and no content
+              -- to judge it against. The client can report comments now, so the
+              -- queue has to be able to read them.
+              CASE WHEN r.target_type = 'comment' THEN (SELECT content FROM comments WHERE id = r.target_id) END AS comment_content,
+              CASE WHEN r.target_type = 'comment' THEN (SELECT u.name FROM comments c JOIN users u ON u.id = c.user_id WHERE c.id = r.target_id) END AS comment_author_name,
               (SELECT COUNT(*) FROM reports x
                 WHERE x.target_type = r.target_type AND x.target_id = r.target_id) AS reports_on_target
          FROM reports r
