@@ -2,31 +2,29 @@
 // Location capability for the Nearby segment and the "use my coordinates"
 // button in Add place.
 //
-// ── Why this file has a hard-coded switch ───────────────────────────────────
-// `expo-location` is NOT in mobile/package.json, and the brief forbids adding
-// dependencies. Metro resolves every require()/import statically at bundle
-// time, so there is no runtime-safe way to "try" for a missing package — even
-// a require wrapped in try/catch fails the whole bundle, not just this module.
-// The capability is therefore declared absent, and every caller degrades to a
-// clear Settings prompt instead of a silent dead end.
+// ── Enabled ─────────────────────────────────────────────────────────────────
+// expo-location is installed and the switch below is on, so Nearby works.
+// Previously the module was absent and this file declared the capability
+// unavailable, which meant the Nearby tab rendered and loaded nothing — a
+// visible feature that could not function.
 //
-// ── To enable it (integrator, one step) ─────────────────────────────────────
-//   1. `npx expo install expo-location`
-//   2. app.json → ios.infoPlist.NSLocationWhenInUseUsageDescription and
-//      android.permissions += ACCESS_COARSE_LOCATION / ACCESS_FINE_LOCATION
-//   3. in this file, replace the two lines marked LOCATION SWITCH below with:
-//        import * as Location from 'expo-location';
-//        const LOCATION_MODULE_AVAILABLE = true;
-// Nothing else in the Places module changes — the permission flow, the coords
-// plumbing and every piece of copy below are already written against the real
-// expo-location API.
+// COARSE only, deliberately. getCurrentPositionAsync asks for
+// Accuracy.Balanced (roughly 100m), which ACCESS_COARSE_LOCATION satisfies.
+// ACCESS_FINE_LOCATION is NOT requested: it would be more permission than the
+// code uses, and it moves the Play Data Safety declaration from "Approximate
+// location" to "Precise location" for no gain.
+//
+// Turning it back off is the inverse of turning it on: flip the switch, drop
+// the dependency, remove the permission entries from app.json, and restore the
+// "we never ask for location" wording in the privacy policy — which is only
+// accurate while all four are true together.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Linking } from 'react-native';
 
 /* LOCATION SWITCH ↓ */
-const Location = null;
-const LOCATION_MODULE_AVAILABLE = false;
+import * as Location from 'expo-location';
+const LOCATION_MODULE_AVAILABLE = true;
 /* LOCATION SWITCH ↑ */
 
 // 'unavailable' — no location module in this build (nothing the user can fix)
@@ -45,6 +43,9 @@ export const LOCATION_STATUS = {
 };
 
 const FIX_TIMEOUT_MS = 12000;
+
+// ~1.1km. See the note where it is applied.
+const round2 = (n) => Math.round(n * 100) / 100;
 
 export default function useNearbyLocation() {
   const [status, setStatus] = useState(
@@ -103,7 +104,18 @@ export default function useNearbyLocation() {
         return null;
       }
 
-      const next = { lat, lng };
+      // Rounded to 2dp (~1.1km) before it leaves the device.
+      //
+      // These coordinates travel in a URL query string
+      // (/places/nearby?lat=&lng=), and the Worker runs with observability
+      // enabled, so request URLs — query strings included — land in Cloudflare's
+      // logs. A full-precision fix sitting in a log line is a home address with
+      // a timestamp on it.
+      //
+      // The search radius is 50km and rounding moves the query by at most ~385m,
+      // so nothing about Nearby changes; what gets logged simply stops being able
+      // to identify where someone lives.
+      const next = { lat: round2(lat), lng: round2(lng) };
       if (alive.current) {
         setCoords(next);
         setStatus(LOCATION_STATUS.GRANTED);

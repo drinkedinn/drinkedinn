@@ -111,7 +111,8 @@ export function PrivacyPolicy() {
         <li style={S.li}><strong>Social graph</strong> — who you connect with, and which posts you cheer or comment on.</li>
         <li style={S.li}><strong>Technical data</strong> — IP address (used for rate limiting and abuse prevention), device type, and your timezone offset so notifications respect your quiet hours.</li>
         <li style={S.li}><strong>Push tokens</strong> — only if you turn on push notifications.</li>
-        <li style={S.li}><strong>Places you tag and visit</strong> — the venues you add or mark as visited, their coordinates, and the country of each visit. This is what builds your Places and Trips. It comes from what you tag, never from your device: DrinkedInn does not read your GPS and never asks for location permission.</li>
+        <li style={S.li}><strong>Places you tag and visit</strong> — the venues you add or mark as visited, their coordinates, and the country of each visit. This is what builds your Places and Trips.</li>
+        <li style={S.li}><strong>Approximate location, only while you're using Nearby</strong> — if you open the Nearby tab in Places and allow it, we ask your device for a rough position (about 100 metres, not a precise fix) and use it in that request to find venues around you. We do not write it to your account, your posts or our analytics, and it is never shared. Decline, and every other part of Places still works.</li>
         <li style={S.li}><strong>An app install identifier</strong> — a random id for your installation, plus a session id, so we can count how many people used a feature rather than how many times it was opened. It is not an advertising identifier and is not shared.</li>
         <li style={S.li}><strong>Crash and error diagnostics</strong> — when something breaks: the error message and stack trace, the screen it happened on, your app version and platform, and which account hit it, so we know how many people are affected.</li>
       </ul>
@@ -132,9 +133,9 @@ export function PrivacyPolicy() {
 
       <h2 style={S.h2}>What we don't collect</h2>
       <p style={S.p}>
-        We do not read your device's location — there is no location permission in this app — and we do
-        not collect your contacts, health data, or advertising identifiers. The only place information
-        we hold is the venue you chose to tag, described above.
+        We do not collect your contacts, health data, or advertising identifiers. We ask for location
+        only for the Nearby tab, only while you are looking at it, and only at approximate accuracy —
+        never a precise fix, never in the background, and never stored.
         We never see your password — it is hashed with bcrypt before storage and cannot be reversed.
       </p>
 
