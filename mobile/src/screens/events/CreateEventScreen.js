@@ -221,7 +221,7 @@ export default function CreateEventScreen({ navigation }) {
           {/* Drink */}
           <View style={{ marginTop: 22 }}>
             <View style={{ paddingHorizontal: 16 }}>
-              <FieldLabel icon="wine-outline">What you'll moment</FieldLabel>
+              <FieldLabel icon="sparkles-outline">What to expect</FieldLabel>
             </View>
             <DrinkChipPicker value={drink} onChange={setDrink} />
             <Text style={[type.caption, { color: t.textMuted, paddingHorizontal: 16, marginTop: 10, lineHeight: 17 }]}>

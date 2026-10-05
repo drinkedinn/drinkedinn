@@ -1,60 +1,51 @@
 // src/screens/taste/AddRatingScreen.js
-// Modal composer for POST /ratings.
-// Fields: drink_name (required), drink_type (chip), rating (0-10 in 0.5 steps),
-// nose / palate / finish, optional distillery.
+// Rate a place you have been.
 //
-// The screen is a form, not a social post: nothing here goes to the feed. Copy
-// centers on the memory of the pour, never on how much or how often.
+// This used to score a bottle: name, type (Whiskey/Wine/Beer), distillery, and
+// a note split across nose / palate / finish. None of that describes a room, so
+// the subject is the place and the note is one free-text field.
+//
+// Reached from the place profile, which passes { placeId, placeName } — the
+// place is never typed in here. A rating belongs to a venue that already
+// exists, so letting someone free-type a name would create ratings pointing at
+// nothing.
+//
+// Server: POST /ratings { place_id, rating, note } (server/routes/ratings.js).
+// It upserts on (user_id, place_id), so rating somewhere twice replaces the
+// previous score rather than adding a second.
 
-import React, { useState, useCallback, useRef } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, ScrollView, Alert, Platform,
-  KeyboardAvoidingView, Pressable, Keyboard,
-} from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TextInput, ScrollView, Alert, Pressable } from 'react-native';
 import api from '../../api';
 import { useTheme } from '../../theme/ThemeContext';
 import { radius, type } from '../../theme/tokens';
-import { Screen, Button, useToast } from '../../components/ui';
+import { Screen, Header, Button, Icon, useToast } from '../../components/ui';
 import { pop } from '../../ui/haptics';
-import TypePicker from '../../components/taste/TypePicker';
-import ScoreControl from '../../components/taste/ScoreControl';
 import track from '../../lib/track';
 
-const NOTES_MAX = 240;
-const NAME_MAX = 80;
+const MAX_SCORE = 5;
+const MAX_NOTE = 500;
 
-function Field({ label, value, onChangeText, placeholder, multiline, autoFocus, maxLength, keyboardType }) {
+function StarPicker({ value, onChange }) {
   const { t } = useTheme();
   return (
-    <View style={{ marginBottom: 16, paddingHorizontal: 16 }}>
-      <Text style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginBottom: 8 }]}>
-        {label}
-      </Text>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={t.textMuted}
-        multiline={multiline}
-        autoFocus={autoFocus}
-        maxLength={maxLength}
-        keyboardType={keyboardType}
-        style={[
-          styles.input,
-          {
-            backgroundColor: t.surface,
-            borderColor: t.border,
-            color: t.text,
-            minHeight: multiline ? 64 : 44,
-            textAlignVertical: multiline ? 'top' : 'center',
-          },
-        ]}
-      />
-      {typeof maxLength === 'number' && multiline && (
-        <Text style={[type.caption, { color: t.textMuted, marginTop: 4, textAlign: 'right' }]}>
-          {(value?.length || 0)} / {maxLength}
-        </Text>
-      )}
+    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+      {Array.from({ length: MAX_SCORE }, (_, i) => {
+        const n = i + 1;
+        const on = value >= n;
+        return (
+          <Pressable
+            key={n}
+            onPress={() => { pop(); onChange(n); }}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`${n} out of ${MAX_SCORE}`}
+            accessibilityState={{ selected: on }}
+          >
+            <Icon name={on ? 'star' : 'star-outline'} size={34} color={on ? t.accent : t.textMuted} />
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -62,166 +53,97 @@ function Field({ label, value, onChangeText, placeholder, multiline, autoFocus, 
 export default function AddRatingScreen({ navigation, route }) {
   const { t } = useTheme();
   const toast = useToast();
-  const onCreated = route.params?.onCreated;
-  const submitting = useRef(false);
 
-  const [name, setName] = useState('');
-  const [type_, setType_] = useState('Whiskey');
+  const placeId = route.params?.placeId;
+  const placeName = route.params?.placeName;
+  const onCreated = route.params?.onCreated;
+
   const [rating, setRating] = useState(0);
-  const [distillery, setDistillery] = useState('');
-  const [nose, setNose] = useState('');
-  const [palate, setPalate] = useState('');
-  const [finish, setFinish] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const dirty =
-    name.trim() ||
-    distillery.trim() ||
-    nose.trim() ||
-    palate.trim() ||
-    finish.trim() ||
-    rating > 0 ||
-    type_ !== 'Whiskey';
+  const dirty = rating > 0 || note.trim().length > 0;
 
   const close = useCallback(() => {
-    Keyboard.dismiss();
     if (!dirty) { navigation.goBack(); return; }
-    Alert.alert('Discard this note?', 'You’ll lose what you’ve written.', [
+    Alert.alert('Discard this rating?', 'What you have written will not be saved.', [
       { text: 'Keep writing', style: 'cancel' },
       { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
     ]);
   }, [dirty, navigation]);
 
-  const submit = async () => {
-    if (submitting.current) return;
-    const drinkName = name.trim();
-    if (!drinkName) { toast?.show('Give it a name first.', 'error'); return; }
-    if (rating <= 0) { toast?.show('Score it before you save.', 'error'); return; }
-
-    submitting.current = true;
+  const submit = useCallback(async () => {
+    if (!placeId) {
+      toast?.show('No place to rate. Open a place first.', 'error');
+      return;
+    }
+    if (rating < 1) {
+      toast?.show('Give it a score first.', 'info');
+      return;
+    }
     setBusy(true);
     try {
-      const res = await api.post('/ratings', {
-        drink_name: drinkName,
-        drink_type: type_,
-        rating,
-        distillery: distillery.trim(),
-        nose: nose.trim(),
-        palate: palate.trim(),
-        finish: finish.trim(),
-      });
-      const created = res?.data;
-      if (created && typeof created === 'object' && created.id != null) {
-        onCreated?.(created);
-      }
-      pop();
-      track('taste_rating_add', { type: type_, score: rating });
-      toast?.show('Noted. Kept in your book.', 'success');
+      const res = await api.post('/ratings', { place_id: placeId, rating, note: note.trim() });
+      track('place_rated', { rating });
+      toast?.show('Rated. Thanks.', 'success');
+      onCreated?.(res?.data);
       navigation.goBack();
     } catch (e) {
-      toast?.show(e?.safeMessage || 'Could not save that.', 'error');
-      submitting.current = false;
+      toast?.show(e?.safeMessage || 'Could not save that rating.', 'error');
+    } finally {
       setBusy(false);
     }
-  };
+  }, [placeId, rating, note, onCreated, navigation, toast]);
 
   return (
-    <Screen edges={['top']}>
-      <View style={[styles.header, { borderBottomColor: t.divider }]}>
-        <Pressable onPress={close} hitSlop={12} accessibilityLabel="Close">
-          <Text style={[type.body, { color: t.textSecondary }]}>Cancel</Text>
-        </Pressable>
-        <Text style={[type.h3, { color: t.text }]}>New rating</Text>
-        <Button label="Save" size="sm" onPress={submit} loading={busy} disabled={!name.trim() || rating <= 0 || busy} />
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={{ flex: 1 }}
-      >
-        <ScrollView
-          contentContainerStyle={{ paddingTop: 14, paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <Field
-            label="Name"
-            value={name}
-            onChangeText={setName}
-            placeholder="Lagavulin 16, Old Fashioned, a house cider…"
-            autoFocus
-            maxLength={NAME_MAX}
-          />
-
-          <Text style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginBottom: 10, marginLeft: 16 }]}>
-            Type
-          </Text>
-          <TypePicker value={type_} onChange={setType_} style={{ marginBottom: 18 }} />
-
-          <View style={{ marginBottom: 20 }}>
-            <ScoreControl value={rating} onChange={setRating} label="Score" />
+    <Screen>
+      <Header title="Rate this place" onBack={close} />
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+        {!!placeName && (
+          <View style={[styles.place, { backgroundColor: t.surfaceAlt, borderColor: t.border }]}>
+            <Icon name="location-outline" size={16} color={t.textMuted} />
+            <Text style={[type.label, { color: t.text, flex: 1 }]} numberOfLines={1}>{placeName}</Text>
           </View>
+        )}
 
-          <Field
-            label="Distillery or origin (optional)"
-            value={distillery}
-            onChangeText={setDistillery}
-            placeholder="Islay, Kentucky, your kitchen…"
-            maxLength={80}
-          />
+        <Text style={[type.label, { color: t.text, marginTop: 20 }]}>How was it?</Text>
+        <StarPicker value={rating} onChange={setRating} />
 
-          <View style={{ marginTop: 6, paddingHorizontal: 16, marginBottom: 10 }}>
-            <Text style={[type.h3, { color: t.text }]}>Tasting notes</Text>
-            <Text style={[type.caption, { color: t.textMuted, marginTop: 2 }]}>
-              A sentence each is plenty. This is a memory, not a review.
-            </Text>
-          </View>
+        <Text style={[type.label, { color: t.text, marginTop: 24 }]}>Anything worth remembering?</Text>
+        <Text style={[type.caption, { color: t.textMuted, marginTop: 2 }]}>Optional — a line for your future self.</Text>
+        <TextInput
+          value={note}
+          onChangeText={setNote}
+          placeholder="Go at sunset, sit on the left…"
+          placeholderTextColor={t.textMuted}
+          multiline
+          maxLength={MAX_NOTE}
+          style={[styles.note, { backgroundColor: t.surface, borderColor: t.border, color: t.text }]}
+        />
+        <Text style={[type.caption, { color: t.textMuted, alignSelf: 'flex-end', marginTop: 4 }]}>
+          {note.length}/{MAX_NOTE}
+        </Text>
 
-          <Field
-            label="Nose"
-            value={nose}
-            onChangeText={setNose}
-            placeholder="What it smelled like when you brought it close."
-            multiline
-            maxLength={NOTES_MAX}
-          />
-          <Field
-            label="Palate"
-            value={palate}
-            onChangeText={setPalate}
-            placeholder="First sip, mid-palate — what stood out?"
-            multiline
-            maxLength={NOTES_MAX}
-          />
-          <Field
-            label="Finish"
-            value={finish}
-            onChangeText={setFinish}
-            placeholder="What lingered after you set the glass down."
-            multiline
-            maxLength={NOTES_MAX}
-          />
-        </ScrollView>
-      </KeyboardAvoidingView>
+        <Button
+          label={busy ? 'Saving…' : 'Save rating'}
+          onPress={submit}
+          disabled={busy || rating < 1}
+          loading={busy}
+          full
+          style={{ marginTop: 24 }}
+        />
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    paddingTop: 4,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  place: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: radius.md, padding: 12,
   },
-  input: {
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    fontSize: 15,
+  note: {
+    borderWidth: 1, borderRadius: radius.md, padding: 12,
+    minHeight: 110, textAlignVertical: 'top', marginTop: 8, fontSize: 15,
   },
 });

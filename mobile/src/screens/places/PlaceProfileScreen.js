@@ -214,6 +214,31 @@ export default function PlaceProfileScreen({ navigation, route }) {
   });
 
   // ── Actions ───────────────────────────────────────────────────────────────
+  // Ratings for this venue, fetched separately from the place payload so a
+  // rating someone just left shows without busting the place cache.
+  const [ratings, setRatings] = useState({ list: [], count: 0, average: null });
+
+  useEffect(() => {
+    let alive = true;
+    if (!placeId) return undefined;
+    api
+      .get(`/ratings/place/${placeId}`)
+      .then((res) => {
+        if (!alive) return;
+        setRatings({
+          list: Array.isArray(res.data?.ratings) ? res.data.ratings : [],
+          count: Number(res.data?.count) || 0,
+          average: res.data?.average == null ? null : Number(res.data.average),
+        });
+      })
+      .catch(() => { /* the rest of the place still renders without ratings */ });
+    return () => { alive = false; };
+  }, [placeId]);
+
+  const openRating = useCallback(() => {
+    navigation.navigate('AddRating', { placeId, placeName: place?.name });
+  }, [navigation, placeId, place?.name]);
+
   const toggleSave = useCallback(async () => {
     if (savingRef.current || placeId == null) return;
     savingRef.current = true;
@@ -511,14 +536,35 @@ export default function PlaceProfileScreen({ navigation, route }) {
               />
             )}
 
-            {/* Not wired yet — no server route returns these for a place. */}
-            <SectionHeader title="Ratings" />
-            <QuietCard
-              icon="star-outline"
-              title="Ratings for this place"
-              body="What people thought, once ratings can be pinned to a venue."
-              pill="Coming soon"
+            {/* Wired now. GET /ratings/place/:id returns every rating for this venue
+                plus the average, with blocked members filtered out. */}
+            <SectionHeader
+              title="Ratings"
+              caption={ratings.average != null ? `${ratings.average.toFixed(1)} · ${plural(ratings.count, 'rating')}` : undefined}
             />
+            {ratings.list.length ? (
+              ratings.list.slice(0, 5).map((r) => (
+                <View key={r.id} style={[styles.ratingRow, { borderColor: t.border, backgroundColor: t.surface }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Icon name="star" size={13} color={t.accent} />
+                    <Text style={[type.label, { color: t.text }]}>{Number(r.rating).toFixed(1)}</Text>
+                  </View>
+                  {!!r.note && (
+                    <Text style={[type.caption, { color: t.textSecondary, marginTop: 4, lineHeight: 18 }]} numberOfLines={3}>
+                      {r.note}
+                    </Text>
+                  )}
+                </View>
+              ))
+            ) : (
+              <QuietCard
+                icon="star-outline"
+                title="No ratings yet"
+                body="Been here? Give it a score and a line about why."
+                actionLabel="Rate this place"
+                onAction={openRating}
+              />
+            )}
 
             <SectionHeader title="Events here" />
             <QuietCard
@@ -551,6 +597,7 @@ export default function PlaceProfileScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  ratingRow: { borderWidth: 1, borderRadius: 14, padding: 12, marginHorizontal: 16, marginBottom: 8 },
   coverScrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 64 },
   identity: { paddingHorizontal: 16, paddingTop: 16 },
   metaRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 9 },

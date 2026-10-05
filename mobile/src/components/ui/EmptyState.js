@@ -6,7 +6,9 @@ import Button from './Button';
 import { useTheme } from '../../theme/ThemeContext';
 import { type, radius } from '../../theme/tokens';
 
-export default function EmptyState({ icon = 'wine-outline', title, body, actionLabel, onAction }) {
+// Default icon is deliberately not a glass: this is THE fallback across the
+// whole app, so a drink glyph here is the most-seen image in the product.
+export default function EmptyState({ icon = 'sparkles-outline', title, body, actionLabel, onAction }) {
   const { t } = useTheme();
   return (
     <View style={{ alignItems: 'center', paddingTop: 72, paddingHorizontal: 40 }}>

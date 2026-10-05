@@ -393,7 +393,7 @@ export default function GroupDetailScreen({ navigation, route }) {
           ListEmptyComponent={
             posts.length === 0 && group ? (
               <EmptyState
-                icon="wine-outline"
+                icon="chatbubbles-outline"
                 title="Nothing shared yet"
                 body={
                   isMember

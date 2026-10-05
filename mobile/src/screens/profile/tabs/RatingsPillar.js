@@ -1,110 +1,119 @@
 // src/screens/profile/tabs/RatingsPillar.js
-// Pillar 5 — Ratings. Someone's palate, in their own words.
+// Pillar — Ratings. What someone thought of the places they went to.
 //
-// Server: GET /ratings (server/routes/ratings.js) → rows of drink_ratings:
-//   { id, user_id, drink_name, distillery, drink_type, rating, nose, palate,
-//     finish, image_url, created_at }
-// The route reads `req.query.user_id` and falls back to the signed-in user, so
-// another member's ratings must be requested with user_id — anything else
-// quietly returns your own. The server orders by created_at; this pillar is a
-// "best of", so it re-sorts by score.
+// This used to render drink_ratings: drink_name, distillery, and a tasting note
+// split across nose / palate / finish. Those fields do not describe a rooftop or
+// a dining room, so the server now returns place ratings and this renders them.
 //
-// Scores are 0–10 in half steps (AddRatingScreen / ScoreControl). The notes,
-// not the number, are the point — the number just sets the order.
+// Server: GET /ratings?user_id= (server/routes/ratings.js) →
+//   { id, rating, note, created_at, place_id, place_name, city, country,
+//     category, cover_url }
+// The place is JOINED in deliberately, so a list of twenty ratings is one
+// request rather than twenty — the N+1 that had GET /api/places costing 152
+// subrequests against a cap of 50.
+//
+// Scores are 1–5. The old scale was 0–10 in half steps, so scoreText() from
+// pillarKit is NOT used here: it formats for the old range and would render a
+// 4.5 as if it were middling.
 
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import api from '../../../api';
 import { useTheme } from '../../../theme/ThemeContext';
 import { radius, type } from '../../../theme/tokens';
-import { Bounce } from '../../../components/ui';
+import { Bounce, Icon } from '../../../components/ui';
 import useProfileResource from '../useProfileResource';
 import {
   GUTTER, OptionsButton, PillarEmpty, PillarError, PillarSkeleton,
-  SectionHeading, ShowAll, Thumb, monthLabel, navigateByName, parseDate, plural, scoreText,
+  SectionHeading, ShowAll, Thumb, navigateByName, parseDate, plural,
 } from '../pillarKit';
 
 const CAP = 6;
+const MAX_SCORE = 5;
 
-function Note({ label, value, t }) {
-  if (!value) return null;
+/** Filled stars to the score, rounded to the nearest half. */
+function Stars({ value, size = 13 }) {
+  const { t } = useTheme();
+  const score = Math.max(0, Math.min(MAX_SCORE, Number(value) || 0));
   return (
-    <View style={styles.noteRow}>
-      <Text style={[type.overline, { color: t.textMuted, width: 50, textTransform: 'uppercase' }]}>
-        {label}
-      </Text>
-      <Text style={[type.caption, { color: t.textSecondary, flex: 1, lineHeight: 18 }]} numberOfLines={2}>
-        {value}
-      </Text>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }} accessible accessibilityLabel={`${score} out of ${MAX_SCORE}`}>
+      {Array.from({ length: MAX_SCORE }, (_, i) => {
+        const filled = score >= i + 1;
+        const half = !filled && score >= i + 0.5;
+        return (
+          <Icon
+            key={i}
+            name={filled ? 'star' : half ? 'star-half' : 'star-outline'}
+            size={size}
+            color={filled || half ? t.accent : t.textMuted}
+          />
+        );
+      })}
     </View>
   );
 }
 
-function RatingRow({ item, expanded, onToggle, onOptions }) {
+function RatingRow({ item, onOpen, onOptions }) {
   const { t } = useTheme();
-  const score = scoreText(item?.rating);
-  const meta = [item?.drink_type, item?.distillery].filter(Boolean).join(' · ');
-  const hasNotes = !!(item?.nose || item?.palate || item?.finish);
+  const meta = [item?.category, item?.city].filter(Boolean).join(' · ');
 
   return (
     <View style={{ paddingHorizontal: GUTTER, marginBottom: 10 }}>
       <Bounce
-        onPress={hasNotes ? onToggle : undefined}
-        haptic={hasNotes ? 'light' : null}
-        scaleTo={0.99}
-        accessibilityLabel={
-          `${item?.drink_name || 'Unnamed'}${score ? `, ${score} out of 10` : ''}` +
-          (hasNotes ? ', tap for notes' : '')
-        }
-        style={[styles.card, { backgroundColor: t.surface, borderColor: t.border }]}
+        onPress={onOpen}
+        haptic="light"
+        scaleTo={0.985}
+        accessibilityRole="button"
+        accessibilityLabel={`${item?.place_name || 'Place'}, rated ${item?.rating} out of ${MAX_SCORE}`}
+        style={[styles.row, { backgroundColor: t.surface, borderColor: t.border }]}
       >
-        <View style={styles.head}>
-          <Thumb uri={item?.image_url} width={46} height={46} round={radius.sm} icon="wine-outline" iconSize={18} />
-          <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={[type.bodyStrong, { color: t.text }]} numberOfLines={1}>
-              {item?.drink_name || 'Unnamed'}
+        <Thumb uri={item?.cover_url} width={54} height={54} round={radius.sm} icon="location-outline" />
+
+        <View style={{ flex: 1, marginLeft: 12 }}>
+          <Text style={[type.label, { color: t.text }]} numberOfLines={1}>
+            {item?.place_name || 'Unnamed place'}
+          </Text>
+          {!!meta && (
+            <Text style={[type.caption, { color: t.textMuted, marginTop: 1 }]} numberOfLines={1}>
+              {meta}
             </Text>
-            <Text style={[type.caption, { color: t.textMuted, marginTop: 3 }]} numberOfLines={1}>
-              {[meta, monthLabel(item?.created_at)].filter(Boolean).join(' · ') || 'A note worth keeping'}
-            </Text>
-          </View>
-          {!!score && (
-            <View style={[styles.score, { backgroundColor: t.accentSoft, borderColor: t.accentBorder }]}>
-              <Text style={[type.h3, { color: t.accentText, fontVariant: ['tabular-nums'] }]}>{score}</Text>
-              <Text style={[type.caption, { color: t.accentText, opacity: 0.7 }]}>/10</Text>
-            </View>
           )}
-          {onOptions ? <OptionsButton onPress={onOptions} label="Rating options" style={{ marginLeft: 4 }} /> : null}
+          <View style={{ marginTop: 5 }}>
+            <Stars value={item?.rating} />
+          </View>
+          {/* One free-text note replaces nose/palate/finish — three labelled
+              fields made sense for a dram and none for a room. */}
+          {!!item?.note && (
+            <Text style={[type.caption, { color: t.textSecondary, marginTop: 6, lineHeight: 18 }]} numberOfLines={3}>
+              {item.note}
+            </Text>
+          )}
         </View>
 
-        {hasNotes && expanded && (
-          <View style={[styles.notes, { borderTopColor: t.divider }]}>
-            <Note label="Nose" value={item?.nose} t={t} />
-            <Note label="Palate" value={item?.palate} t={t} />
-            <Note label="Finish" value={item?.finish} t={t} />
-          </View>
-        )}
+        {!!onOptions && <OptionsButton onPress={onOptions} />}
       </Bounce>
     </View>
   );
 }
 
 export default function RatingsPillar({
-  userId, isMe, token, navigation, ugc, memberName, onError,
+  userId, token, isMe, navigation, onError, onOptions,
 }) {
-  const [expandedId, setExpandedId] = useState(null);
+  const { t } = useTheme();
   const [showAll, setShowAll] = useState(false);
 
   const ratings = useProfileResource(
     async () => {
-      // user_id — the query key the server actually reads.
+      // user_id — the query key the server reads. Without it the route falls
+      // back to the signed-in user and quietly returns your own ratings on
+      // someone else's profile.
       const res = await api.get(`/ratings?user_id=${encodeURIComponent(userId)}`);
       return Array.isArray(res?.data) ? res.data : [];
     },
     { token, key: `ratings:${userId}`, onError },
   );
 
-  // Highest score first; ties go to the more recent note.
+  // Best first; ties to the more recent.
   const sorted = useMemo(() => {
     const list = Array.isArray(ratings.data) ? ratings.data : [];
     return [...list].sort((a, b) => {
@@ -117,80 +126,62 @@ export default function RatingsPillar({
   const visible = showAll ? sorted : sorted.slice(0, CAP);
 
   if (ratings.loading && ratings.data == null) return <PillarSkeleton variant="rows" />;
-
-  if (ratings.error && !sorted.length) {
-    return <PillarError message={ratings.error} onRetry={ratings.reload} />;
-  }
+  if (ratings.error && !sorted.length) return <PillarError message={ratings.error} onRetry={ratings.reload} />;
 
   if (!sorted.length) {
     return (
       <PillarEmpty
-        icon="sparkles-outline"
-        title={isMe ? 'No notes yet' : 'Nothing written down yet'}
+        icon="star-outline"
+        title={isMe ? 'No places rated yet' : 'Nothing rated yet'}
         body={
           isMe
-            ? 'What did it smell like? What stayed with you? Write it down while you still remember.'
-            : 'When they write down what a moment was like, it shows up here.'
+            ? 'Been somewhere worth remembering? Give it a score and a line about why.'
+            : 'When they rate a place they have been, it shows up here.'
         }
-        actionLabel={isMe ? 'Write a note' : undefined}
-        onAction={isMe ? () => navigateByName(navigation, 'AddRating') : undefined}
+        actionLabel={isMe ? 'Find a place' : undefined}
+        onAction={isMe ? () => navigateByName(navigation, 'Places') : undefined}
       />
     );
   }
 
-  const top = scoreText(sorted[0]?.rating);
+  const openPlace = (item) =>
+    item?.place_id && navigateByName(navigation, 'PlaceProfile', { id: item.place_id });
 
   return (
     <View>
       {!!ratings.error && (
-        <View style={{ marginBottom: 14 }}>
-          <PillarError message={ratings.error} onRetry={ratings.reload} />
-        </View>
+        <Text style={[type.caption, { color: t.danger, paddingHorizontal: GUTTER, marginBottom: 8 }]}>
+          {ratings.error}
+        </Text>
       )}
 
       <SectionHeading
-        title="Tasting notes"
-        caption={`${plural(sorted.length, 'note')}${top ? ` · best so far ${top}/10` : ''}`}
-        actionLabel={isMe ? 'Add' : undefined}
-        onAction={isMe ? () => navigateByName(navigation, 'AddRating') : undefined}
+        title={plural(sorted.length, 'place')}
+        subtitle={isMe ? 'Rated by you' : 'Rated by them'}
       />
 
       {visible.map((item) => (
         <RatingRow
-          key={String(item.id)}
+          key={item.id}
           item={item}
-          expanded={String(expandedId) === String(item.id)}
-          onToggle={() =>
-            setExpandedId((cur) => (String(cur) === String(item.id) ? null : item.id))
-          }
-          onOptions={
-            isMe
-              ? undefined
-              : () =>
-                  ugc?.openMenu?.({
-                    targetType: 'user',
-                    targetId: userId,
-                    authorId: userId,
-                    authorName: memberName,
-                    noun: 'note',
-                  })
-          }
+          onOpen={() => openPlace(item)}
+          onOptions={onOptions ? () => onOptions(item) : undefined}
         />
       ))}
 
-      <ShowAll hidden={showAll ? 0 : sorted.length - visible.length} onPress={() => setShowAll(true)} />
+      {sorted.length > CAP && (
+        <ShowAll expanded={showAll} count={sorted.length} onPress={() => setShowAll((v) => !v)} />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: radius.md, borderWidth: 1, padding: 12 },
-  head: { flexDirection: 'row', alignItems: 'center' },
-  score: {
-    flexDirection: 'row', alignItems: 'baseline', gap: 1,
-    paddingHorizontal: 9, paddingVertical: 5,
-    borderRadius: radius.sm, borderWidth: 1, marginLeft: 8,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: 12,
   },
-  notes: { marginTop: 12, paddingTop: 11, borderTopWidth: StyleSheet.hairlineWidth, gap: 7 },
-  noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
 });

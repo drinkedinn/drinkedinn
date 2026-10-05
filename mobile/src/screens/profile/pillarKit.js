@@ -127,7 +127,10 @@ export function chunk(list, n) {
 /* ── building blocks ─────────────────────────────────────────────────────── */
 
 /** Image with a themed fallback tile — never a blank hole while loading. */
-export function Thumb({ uri, width, height, round = radius.md, icon = 'wine-outline', iconSize = 20 }) {
+// Default placeholder is a PLACE, not a glass. This defaulted to
+// 'wine-outline', so every missing image anywhere a Thumb is used drew a
+// wine glass — the most common fallback in the app pointing at a drink.
+export function Thumb({ uri, width, height, round = radius.md, icon = 'location-outline', iconSize = 20 }) {
   const { t } = useTheme();
   const src = mediaUrl(uri);
   const box = { width, height, borderRadius: round, backgroundColor: t.surfaceAlt };

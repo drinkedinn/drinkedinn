@@ -49,7 +49,6 @@ import useProfileUgcActions from './useProfileUgcActions';
 import PillarTabs from './PillarTabs';
 import StoriesPillar from './tabs/StoriesPillar';
 import PlacesPillar from './tabs/PlacesPillar';
-import CollectionPillar from './tabs/CollectionPillar';
 import TripsPillar from './tabs/TripsPillar';
 import RatingsPillar from './tabs/RatingsPillar';
 import TaggedPillar from './tabs/TaggedPillar';
@@ -57,7 +56,6 @@ import TaggedPillar from './tabs/TaggedPillar';
 export const PILLARS = [
   { key: 'stories', label: 'Stories', icon: 'sparkles-outline' },
   { key: 'places', label: 'Places', icon: 'location-outline' },
-  { key: 'collection', label: 'Collection', icon: 'library-outline' },
   { key: 'trips', label: 'Trips', icon: 'earth-outline' },
   { key: 'ratings', label: 'Ratings', icon: 'star-outline' },
   { key: 'tagged', label: 'Tagged', icon: 'pricetag-outline' },
@@ -253,8 +251,6 @@ const ProfilePillars = forwardRef(function ProfilePillars(
         return <StoriesPillar {...shared} posts={posts} />;
       case 'places':
         return <PlacesPillar {...shared} places={placesRes} posts={posts} onOpenPlace={onOpenPlace} />;
-      case 'collection':
-        return <CollectionPillar {...shared} />;
       case 'trips':
         return <TripsPillar {...shared} trips={tripsRes} places={placesRes} posts={posts} />;
       case 'ratings':

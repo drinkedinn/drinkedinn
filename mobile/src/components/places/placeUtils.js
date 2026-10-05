@@ -130,8 +130,11 @@ export function placeSubtitle(place) {
 
 const CATEGORY_ICONS = [
   [/coffee|caf[eé]|espresso|roast/i, 'cafe-outline'],
-  [/wine|vineyard|winery|cellar|enoteca/i, 'wine-outline'],
-  [/brew|beer|tap ?room|pub|bar|lounge|cantina|izakaya/i, 'beer-outline'],
+  // A venue's category still needs an icon, but it does not need a glass. The
+  // patterns stay — a wine bar is still matched — only the glyph changes, so
+  // categorisation keeps working without drawing a drink.
+  [/wine|vineyard|winery|cellar|enoteca/i, 'business-outline'],
+  [/brew|beer|tap ?room|pub|bar|lounge|cantina|izakaya/i, 'business-outline'],
   [/club|music|live|venue|dance/i, 'musical-notes-outline'],
   [/restaurant|kitchen|bistro|trattoria|diner|eatery|food/i, 'restaurant-outline'],
   [/hotel|inn|resort|lodge|hostel/i, 'bed-outline'],
