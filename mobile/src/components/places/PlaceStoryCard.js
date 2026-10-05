@@ -70,7 +70,7 @@ function PlaceStoryCard({ story, variant = 'list', width, onOpen, onMenu, onProf
             )}
             {cheers > 0 && (
               <View style={[styles.cheerPill, { backgroundColor: t.scrim }]}>
-                <Icon name="beer" size={11} color="#FFFFFF" />
+                <Icon name="heart" size={11} color="#FFFFFF" />
                 <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>{cheers}</Text>
               </View>
             )}
@@ -145,7 +145,7 @@ function PlaceStoryCard({ story, variant = 'list', width, onOpen, onMenu, onProf
           )}
           {cheers > 0 && (
             <View style={styles.cheerRow}>
-              <Icon name="beer-outline" size={13} color={t.textMuted} />
+              <Icon name="heart-outline" size={13} color={t.textMuted} />
               <Text style={[type.caption, { color: t.textMuted }]}>
                 {cheers} cheer{cheers === 1 ? '' : 's'}
               </Text>

@@ -104,7 +104,7 @@ function StoryRailCard({ post, onOpen, onProfile, onOptions }) {
           )}
 
           <View style={styles.meta}>
-            <Icon name="beer-outline" size={12} color={t.textMuted} />
+            <Icon name="heart-outline" size={12} color={t.textMuted} />
             <Text style={[type.caption, { color: t.textMuted }]}>{cheers}</Text>
             {!!post.location && (
               <>

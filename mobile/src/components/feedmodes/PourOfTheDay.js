@@ -141,7 +141,7 @@ export default function PourOfTheDay({ onOpen, navigation }) {
 
           <View style={[styles.foot, { borderTopColor: t.divider }]}>
             <View style={styles.stat}>
-              <Icon name="beer-outline" size={14} color={t.textMuted} />
+              <Icon name="heart-outline" size={14} color={t.textMuted} />
               <Text style={[type.caption, { color: t.textMuted }]}>{post.cheer_count || 0}</Text>
             </View>
             <View style={styles.stat}>

@@ -122,7 +122,7 @@ function HighlightTile({ post, onPress, onOptions }) {
         <View style={styles.highlightFoot} pointerEvents="none">
           {cheers > 0 && (
             <View style={styles.cheerRow}>
-              <Icon name="beer" size={12} color="#FFFFFF" />
+              <Icon name="heart" size={12} color="#FFFFFF" />
               <Text style={styles.cheerText}>{cheers}</Text>
             </View>
           )}

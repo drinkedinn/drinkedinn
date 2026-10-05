@@ -21,15 +21,26 @@ function timeAgo(ts) {
   return `${Math.floor(s / 604800)}w`;
 }
 
-function ActionButton({ icon, activeIcon, label, active, activeColor, onPress, scale }) {
+function ActionButton({ icon, activeIcon, label, caption, active, activeColor, onPress, scale }) {
   const { t } = useTheme();
   const color = active ? activeColor : t.textMuted;
   return (
-    <Pressable onPress={onPress} hitSlop={8} style={styles.action} accessibilityRole="button" accessibilityLabel={`${label ?? ''} ${icon}`}>
-      <Animated.View style={scale ? { transform: [{ scale }] } : undefined}>
-        <Icon name={active ? activeIcon : icon} size={21} color={color} />
-      </Animated.View>
-      {label !== undefined && <Text style={[type.caption, { color }]}>{label}</Text>}
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      style={styles.action}
+      accessibilityRole="button"
+      accessibilityLabel={caption ? `${label ?? ''} ${caption}` : `${label ?? ''} ${icon}`}
+    >
+      <View style={styles.actionTop}>
+        <Animated.View style={scale ? { transform: [{ scale }] } : undefined}>
+          <Icon name={active ? activeIcon : icon} size={21} color={color} />
+        </Animated.View>
+        {label !== undefined && <Text style={[type.caption, { color }]}>{label}</Text>}
+      </View>
+      {/* The word sits UNDER its own icon rather than in a second row laid
+          out separately, so it stays aligned at any Dynamic Type size. */}
+      {!!caption && <Text style={[type.caption, { color: t.textMuted, fontSize: 10 }]}>{caption}</Text>}
     </Pressable>
   );
 }
@@ -171,12 +182,16 @@ function PostCard({ post, onOpen, onProfile, onReport }) {
       </Pressable>
 
       <View style={[styles.actions, { borderTopColor: t.divider }]}>
-        <ActionButton icon="beer-outline" activeIcon="beer" label={count} active={cheered} activeColor={t.accent} onPress={() => cheer(false)} scale={likeScale} />
-        <ActionButton icon="chatbubble-outline" activeIcon="chatbubble" label={post.comment_count || 0} activeColor={t.text} onPress={() => onOpen?.(post)} />
-        <ActionButton icon="repeat-outline" activeIcon="repeat" label={repourCount} active={repoured} activeColor={t.success} onPress={repour} />
+        {/* Heart, not a beer glass. The brand rule is people first and drinks
+            fourth, and the primary engagement control on every post is the most
+            drinks-forward thing in the app if it is a pint. The double-tap burst
+            already drew a heart, so the button and its own animation disagreed. */}
+        <ActionButton icon="heart-outline" activeIcon="heart" label={count} caption="Cheers" active={cheered} activeColor={t.accent} onPress={() => cheer(false)} scale={likeScale} />
+        <ActionButton icon="chatbubble-outline" activeIcon="chatbubble" label={post.comment_count || 0} caption="Comments" activeColor={t.text} onPress={() => onOpen?.(post)} />
+        <ActionButton icon="repeat-outline" activeIcon="repeat" label={repourCount} caption="Repours" active={repoured} activeColor={t.success} onPress={repour} />
         <View style={{ flex: 1 }} />
-        <ActionButton icon="bookmark-outline" activeIcon="bookmark" active={saved} activeColor={t.accent} onPress={() => setSaved((s) => !s)} />
-        <ActionButton icon="share-outline" activeIcon="share" activeColor={t.text} onPress={share} />
+        <ActionButton icon="bookmark-outline" activeIcon="bookmark" caption="Save" active={saved} activeColor={t.accent} onPress={() => setSaved((s) => !s)} />
+        <ActionButton icon="share-outline" activeIcon="share" caption="Share" activeColor={t.text} onPress={share} />
       </View>
     </View>
   );
@@ -192,7 +207,8 @@ const styles = StyleSheet.create({
   drinkPill: { position: 'absolute', top: 12, right: 12, width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16, paddingTop: 10 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 16, paddingVertical: 12, marginTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  action: { alignItems: 'center', gap: 2 },
+  actionTop: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
 
 export default memo(PostCard);
