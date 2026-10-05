@@ -50,6 +50,8 @@ const OWNED = [
   //   place_visits is their been-here history.
   // A blocked-user policy or a data-portability request must erase both.
   ['saved_places', ['user_id']],
+  // A rating is the member's own opinion and goes with them.
+  ['place_ratings', ['user_id']],
   ['place_visits', ['user_id']],
 
   // An admin role is an entitlement, not a record worth keeping: an erased

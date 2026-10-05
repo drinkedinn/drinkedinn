@@ -330,6 +330,28 @@ async function init() {
     CREATE INDEX IF NOT EXISTS idx_places_country ON places(country);
 
     -- "Want to go" — one row per user/place pair (existence = saved).
+    -- What a member thought of a place they went to.
+    --
+    -- Replaces drink_ratings, which scored a bottle on nose/palate/finish. The
+    -- subject is the place now, so the vocabulary is a score and a note — the
+    -- tasting-note fields had no meaning for a rooftop or a dining room.
+    --
+    -- UNIQUE on (user_id, place_id): a rating is an opinion, not a log. Going
+    -- back and changing your mind should replace the old score rather than
+    -- leave two.
+    CREATE TABLE IF NOT EXISTS place_ratings (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id    INTEGER NOT NULL,
+      place_id   INTEGER NOT NULL,
+      rating     REAL NOT NULL,
+      note       TEXT DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (place_id) REFERENCES places(id)
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_place_rating_one_per_user ON place_ratings(user_id, place_id);
+    CREATE INDEX IF NOT EXISTS idx_place_rating_place ON place_ratings(place_id);
+
     CREATE TABLE IF NOT EXISTS saved_places (
       user_id    INTEGER NOT NULL,
       place_id   INTEGER NOT NULL,
