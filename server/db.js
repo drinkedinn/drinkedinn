@@ -747,10 +747,10 @@ async function init() {
     }
 
     const seedEvents = [
-      [userIds[0], 'Whisky Tasting Evening',  '2026-05-10', 'Mumbai, India',    '🥃'],
-      [userIds[1], 'Rooftop Sundowner',        '2026-05-17', 'Bangalore, India', '🍸'],
-      [userIds[2], 'Wine & Cheese Night',      '2026-05-24', 'Delhi, India',     '🍷'],
-      [userIds[3], 'Craft Beer Festival',      '2026-06-07', 'Pune, India',      '🍺'],
+      [userIds[0], 'Supper Club',  '2026-05-10', 'Mumbai, India',    '🍽️'],
+      [userIds[1], 'Rooftop Sundowner',        '2026-05-17', 'Bangalore, India', '🌇'],
+      [userIds[2], 'Long Table Dinner',      '2026-05-24', 'Delhi, India',     '🍽️'],
+      [userIds[3], 'Street Food Fair',      '2026-06-07', 'Pune, India',      '🧺'],
     ];
     const eventIds = [];
     for (const e of seedEvents) {
@@ -764,10 +764,10 @@ async function init() {
     }
 
     const seedGroups = [
-      ['Whisky Society 🥃', 'For single malt lovers and blended believers alike', '🥃', userIds[0]],
-      ['Mumbai Wine Circle 🍷', "The city's finest oenophiles, meeting monthly", '🍷', userIds[2]],
-      ['Craft Beer Geeks 🍺', 'IPAs, stouts, sours — we love them all', '🍺', userIds[3]],
-      ['Cocktail Creators 🍸', 'Shake it, stir it, garnish it', '🍸', userIds[4]],
+      ['Rooftop Finders 🌇', 'The best views in the city, one terrace at a time', '🌇', userIds[0]],
+      ['Mumbai Table 🍽️', 'The city finest eaters, meeting monthly', '🍽️', userIds[2]],
+      ['Live Music Hunters 🎸', 'Small venues, big nights', '🎸', userIds[3]],
+      ['Weekend Wanderers 🧭', 'New corners of the city, every Saturday', '🧭', userIds[4]],
     ];
     const groupIds = [];
     for (const g of seedGroups) {
@@ -822,9 +822,9 @@ async function init() {
       await run('INSERT INTO bucket_list (user_id, drink_name, checked) VALUES (?, ?, ?)', b);
     }
 
-    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ["Try 5 New Craft Beers", "Explore 5 craft beers you've never had before this month", '🍺', '2026-05-31']);
-    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Whisky World Tour', 'Try a whisky from 3 different countries', '🥃', '2026-05-31']);
-    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Natural Wine Explorer', 'Discover 3 natural or biodynamic wines', '🍷', '2026-05-31']);
+    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ["Five New Places", "Visit 5 places you have never been before this month", '🧭', '2026-05-31']);
+    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['City Hopper', 'Share a moment from 3 different cities', '🌍', '2026-05-31']);
+    await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Hidden Gems', 'Find 3 places nobody in your circle has been to yet', '💎', '2026-05-31']);
 
     const challenges = await all('SELECT id FROM challenges');
     if (challenges.length > 0) {
@@ -847,7 +847,7 @@ async function init() {
   try {
     const evRow = await get('SELECT COUNT(*) as count FROM events');
     if ((evRow?.count || 0) === 0) {
-      for (const e of [[1,'Whisky Tasting Evening','2026-05-10','Mumbai, India','🥃'],[2,'Rooftop Sundowner','2026-05-17','Bangalore, India','🍸'],[3,'Wine & Cheese Night','2026-05-24','Delhi, India','🍷'],[4,'Craft Beer Festival','2026-06-07','Pune, India','🍺']]) {
+      for (const e of [[1,'Supper Club','2026-05-10','Mumbai, India','🍽️'],[2,'Rooftop Sundowner','2026-05-17','Bangalore, India','🍽️'],[3,'Long Table Dinner','2026-05-24','Delhi, India','🍽️'],[4,'Street Food Fair','2026-06-07','Pune, India','🍽️']]) {
         await run('INSERT INTO events (user_id, title, date, location, drink) VALUES (?, ?, ?, ?, ?)', e);
       }
     }
@@ -855,7 +855,7 @@ async function init() {
     const gcRow = await get('SELECT COUNT(*) as count FROM drink_groups');
     if ((gcRow?.count || 0) === 0) {
       const gids = [];
-      for (const g of [['Whisky Society 🥃','For single malt lovers','🥃',1],['Mumbai Wine Circle 🍷','The city finest oenophiles','🍷',3],['Craft Beer Geeks 🍺','IPAs, stouts, sours','🍺',4],['Cocktail Creators 🍸','Shake it, stir it','🍸',5]]) {
+      for (const g of [['Rooftop Finders 🌇', 'The best views in the city, one terrace at a time', '🌇', 1],['Mumbai Table 🍽️', 'The city finest eaters, meeting monthly', '🍽️', 3],['Live Music Hunters 🎸', 'Small venues, big nights', '🎸', 4],['Weekend Wanderers 🧭', 'New corners of the city, every Saturday', '🧭', 5]]) {
         const { lastInsertRowid } = await run('INSERT INTO drink_groups (name, description, drink_type, created_by) VALUES (?, ?, ?, ?)', g);
         gids.push(lastInsertRowid);
       }
@@ -873,9 +873,9 @@ async function init() {
 
     const ccRow = await get('SELECT COUNT(*) as count FROM challenges');
     if ((ccRow?.count || 0) === 0) {
-      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ["Try 5 New Craft Beers", "Explore 5 craft beers you've never had before", '🍺', '2026-05-31']);
-      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Whisky World Tour', 'Try a whisky from 3 different countries', '🥃', '2026-05-31']);
-      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Natural Wine Explorer', 'Discover 3 natural or biodynamic wines', '🍷', '2026-05-31']);
+      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ["Five New Places", "Visit 5 places you have never been before", '🧭', '2026-05-31']);
+      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['City Hopper', 'Share a moment from 3 different cities', '🌍', '2026-05-31']);
+      await run('INSERT INTO challenges (title, description, drink_emoji, end_date) VALUES (?, ?, ?, ?)', ['Hidden Gems', 'Find 3 places nobody in your circle has been to yet', '💎', '2026-05-31']);
     }
 
     const rcRow = await get('SELECT COUNT(*) as count FROM drink_ratings');
@@ -955,9 +955,9 @@ async function init() {
         [u1, `Just submitted my Q3 performance review.\n\nKey achievements:\n✅ Found the rooftop with the best sunset in the city\n✅ Learned every barman's name at my local\n✅ Convinced my team that a 'walking meeting' should end somewhere with a view\n\nSeeking salary appraisal. DMs open. 🌇\n\n#performance #leadership #results #places`, '🥃', '📍 Mumbai, India', ''],
         [u2, `Hot take: the best way to 'disrupt the industry' is to take the client somewhere with character instead of a beige meeting room.\n\nSuddenly everyone is 'aligned.' The deck 'makes sense.' The budget gets approved.\n\nI have 11 years of qualitative data. Will share it over dinner. 🌵\n\n#thoughtleadership #disruption #data`, '🍹', '🇲🇽 Mexico City', 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=600&q=80'],
         [u4, `My startup pitch:\n\nAn app that replaces your Monday standup with one good question and a change of scenery.\n\nSame amount of actual work gets done. Team morale goes from 2/10 to 9/10. Burnout drops 100%.\n\nSeeking $2M seed. I already have 6 co-founders. We are all out at the same table right now. 🍽️\n\n#startup #funding #innovation #novc`, '🍺', '🇬🇧 London, UK', ''],
-        [u5, `Day 1 of quitting alcohol:\nLost 2 clients. Missed a deadline. Got a parking ticket. Argued with the printer.\n\nDay 2: Back on it. 🍸\n\nCorrelation is not causation but I am not taking that chance.\n\n#wellness #balance #gin #selfcare`, '🍸', '📍 Bangalore, India', ''],
+        [u5, `Day 1 of my new morning routine:\n\nLost 2 clients. Missed a deadline. Got a parking ticket. Argued with the printer.\n\nDay 2: Back to the old routine.\n\nCorrelation is not causation. But it is suspicious. 🧭\n\n#habits #routine #productivity`, '🍸', '📍 Bangalore, India', ''],
         [u6, `CEO update:\n\nQ1 goals were:\n1. Scale the product ✅\n2. Grow the team ✅\n3. Drink less ❌\n\n2 out of 3 ain't bad. Investors are very excited about our vision. Board dinner is at a wine bar. Progress. 🥂\n\n#leadership #transparency #vision`, '🥂', '🇫🇷 Paris, France', 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=600&q=80'],
-        [u1, `My therapist asked what makes me feel at peace.\n\nI showed her my bar cart.\n\nShe said that's concerning. I poured her a small Lagavulin.\n\nShe asked for the name of the distillery.\n\nWe're both doing much better now. 🥃\n\n#mentalhealth #therapy #whisky #growth`, '🥃', '📍 Mumbai, India', ''],
+        [u1, `My therapist asked what makes me feel at peace.\n\nI showed her a photo of the rooftop I go to when the week has been too long.\n\nShe asked where it was.\n\nI have made a convert. 🌇\n\n#therapy #places #peace`, '🥃', '📍 Mumbai, India', ''],
         [u2, `Unpopular opinion:\n\n'Networking events' would have 400% better ROI if they served good tequila instead of warm chardonnay in plastic cups.\n\nI have slides. I have data. I have receipts from 47 networking events.\n\nPing me. Let's disrupt the industry. 🌵\n\n#networking #thoughtleadership #tequila`, '🍹', '📍 Delhi, India', ''],
         [u4, `Bought a ₹40,000 Japanese chef's knife.\n\nImmediately used it to cut limes for gin & tonics.\n\nNo regrets. Zero. The knife understands its true calling. It has never been happier.\n\nThis is what finding purpose looks like. 🍸\n\n#japaneseknife #priorities #gin #invest`, '🍸', '📍 Pune, India', ''],
         [u5, `My 5-year plan:\n\nYear 1: Rosé\nYear 2: Rosé but in nicer places\nYear 3: Rosé in places that have a view\nYear 4: Be known for having good rosé taste\nYear 5: Write a LinkedIn post about my rosé journey\n\nCurrently on Year 3. Absolutely crushing it. 🥂\n\n#goals #planning #rosé #vision`, '🥂', '🇬🇷 Santorini, Greece', 'https://images.unsplash.com/photo-1560148271-8b4d7df01c06?w=600&q=80'],
