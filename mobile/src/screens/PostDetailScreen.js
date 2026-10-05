@@ -161,7 +161,7 @@ export default function PostDetailScreen({ navigation, route }) {
 
   return (
     <Screen edges={['top']}>
-      <Header title="Pour" onBack={() => navigation.goBack()} />
+      <Header title="Moment" onBack={() => navigation.goBack()} />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

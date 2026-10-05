@@ -48,7 +48,7 @@ export default function ChallengeCard({ challenge, onOpen, onToggleJoin }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialJoined, initialCount]);
 
-  const emoji = challenge?.drink_emoji || '🥃';
+  const emoji = challenge?.drink_emoji || '✨';
   const title = challenge?.title || 'Untitled challenge';
   const description = challenge?.description || '';
   const dLeft = daysUntil(challenge?.end_date);

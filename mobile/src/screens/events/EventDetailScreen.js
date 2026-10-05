@@ -174,7 +174,7 @@ export default function EventDetailScreen({ navigation, route }) {
     const name = event.name || 'this host';
     Alert.alert(
       `Block ${name}?`,
-      `You won't see ${name}'s events or pours, and they won't see yours. Any connection between you is removed.`,
+      `You won't see ${name}'s events or moments, and they won't see yours. Any connection between you is removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

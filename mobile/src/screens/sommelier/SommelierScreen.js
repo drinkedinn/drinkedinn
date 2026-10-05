@@ -178,7 +178,7 @@ export default function SommelierScreen({ navigation }) {
     <Screen edges={['top']}>
       <Header
         title="Ask the Innkeeper"
-        subtitle={user?.name ? `A pour tailored to you, ${user.name.split(' ')[0]}.` : 'A pour tailored to you.'}
+        subtitle={user?.name ? `A moment tailored to you, ${user.name.split(' ')[0]}.` : 'A moment tailored to you.'}
         onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
       />
 

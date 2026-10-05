@@ -130,7 +130,7 @@ export default function RatingsPillar({
         body={
           isMe
             ? 'What did it smell like? What stayed with you? Write it down while you still remember.'
-            : 'When they write down what a pour was like, it shows up here.'
+            : 'When they write down what a moment was like, it shows up here.'
         }
         actionLabel={isMe ? 'Write a note' : undefined}
         onAction={isMe ? () => navigateByName(navigation, 'AddRating') : undefined}

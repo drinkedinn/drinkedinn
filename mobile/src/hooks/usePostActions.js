@@ -43,7 +43,7 @@ export default function usePostActions({ onRemoved } = {}) {
       const name = post.name || 'this member';
       Alert.alert(
         `Block ${name}?`,
-        `You won't see ${name}'s pours, and they won't see yours. Any connection between you is removed.`,
+        `You won't see ${name}'s moments, and they won't see yours. Any connection between you is removed.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -71,7 +71,7 @@ export default function usePostActions({ onRemoved } = {}) {
       // buttons as there are reasons plus Cancel. Android renders three and
       // silently drops the rest — including Cancel — on the report menu that
       // every post in the main feed uses.
-      const key = await showReportSheet({ title: 'Report this pour — what’s wrong with it?', reasons: REASONS });
+      const key = await showReportSheet({ title: 'Report this moment — what’s wrong with it?', reasons: REASONS });
       if (key) submitReport(post, key);
     },
     [submitReport]
@@ -86,10 +86,10 @@ export default function usePostActions({ onRemoved } = {}) {
       const options = mine
         ? [
             {
-              text: 'Delete pour',
+              text: 'Delete moment',
               style: 'destructive',
               onPress: () =>
-                Alert.alert('Delete this pour?', 'This cannot be undone.', [
+                Alert.alert('Delete this moment?', 'This cannot be undone.', [
                   { text: 'Cancel', style: 'cancel' },
                   {
                     text: 'Delete',
@@ -97,7 +97,7 @@ export default function usePostActions({ onRemoved } = {}) {
                     onPress: async () => {
                       try {
                         await api.delete(`/posts/${post.id}`);
-                        toast?.show('Pour deleted.', 'success');
+                        toast?.show('Moment deleted.', 'success');
                         onRemoved?.(post);
                       } catch (e) {
                         toast?.show(e.safeMessage || 'Could not delete that.', 'error');
@@ -108,11 +108,11 @@ export default function usePostActions({ onRemoved } = {}) {
             },
           ]
         : [
-            { text: 'Report this pour', onPress: () => chooseReason(post) },
+            { text: 'Report this moment', onPress: () => chooseReason(post) },
             { text: `Block ${post.name || 'this member'}`, style: 'destructive', onPress: () => blockUser(post) },
           ];
 
-      Alert.alert(mine ? 'Your pour' : post.name || 'Options', null, [
+      Alert.alert(mine ? 'Your moment' : post.name || 'Options', null, [
         ...options,
         { text: 'Cancel', style: 'cancel' },
       ]);

@@ -52,7 +52,7 @@ export default function CreateEventScreen({ navigation }) {
   const [title, setTitle] = useState('');
   const [location, setLocation] = useState('');
   const [when, setWhen] = useState(defaultWhen);
-  const [drink, setDrink] = useState('🍹');
+  const [drink, setDrink] = useState('✨');
   const [submitting, setSubmitting] = useState(false);
   const restored = useRef(false);
 
@@ -221,7 +221,7 @@ export default function CreateEventScreen({ navigation }) {
           {/* Drink */}
           <View style={{ marginTop: 22 }}>
             <View style={{ paddingHorizontal: 16 }}>
-              <FieldLabel icon="wine-outline">What you'll pour</FieldLabel>
+              <FieldLabel icon="wine-outline">What you'll moment</FieldLabel>
             </View>
             <DrinkChipPicker value={drink} onChange={setDrink} />
             <Text style={[type.caption, { color: t.textMuted, paddingHorizontal: 16, marginTop: 10, lineHeight: 17 }]}>

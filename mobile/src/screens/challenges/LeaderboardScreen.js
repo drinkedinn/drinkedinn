@@ -121,7 +121,7 @@ export default function LeaderboardScreen({ navigation, route }) {
                   <View style={[styles.myBanner, { backgroundColor: t.accentSoft, borderColor: t.accentBorder }]}>
                     <Icon name="sparkles-outline" size={16} color={t.accentText} />
                     <Text style={[type.label, { color: t.accentText }]}>
-                      You're #{mySpot.rank || '—'} — nice pour.
+                      You're #{mySpot.rank || '—'} — nice one.
                     </Text>
                   </View>
                 ) : (

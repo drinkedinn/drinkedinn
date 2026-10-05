@@ -444,7 +444,7 @@ function StepFinish({ pushStatus, pushing, finishing, onEnablePush, onFinish }) 
         <View style={styles.copy}>
           <Text style={[type.h1, { color: t.text }]}>Stay in the loop</Text>
           <Text style={[type.body, { color: t.textSecondary, marginTop: 8, lineHeight: 22 }]}>
-            Get a nudge when someone raises a glass to your pour, or replies to
+            Get a nudge when someone cheers your moment, or replies to
             you. Nothing else — no marketing, no noise.
           </Text>
         </View>
@@ -458,7 +458,7 @@ function StepFinish({ pushStatus, pushing, finishing, onEnablePush, onFinish }) 
           <Divider />
           <BenefitRow
             icon="heart-outline"
-            title="Cheers on your pours"
+            title="Cheers on your moments"
             body="A quiet ping when your moments land."
           />
           <Divider />

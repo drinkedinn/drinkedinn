@@ -26,7 +26,7 @@ export default function StoryRow({ me, people = [], loading, onCompose, onOpenPr
 
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-      <Bounce onPress={onCompose} haptic="medium" scaleTo={0.92} style={styles.cell} accessibilityLabel="Share a pour">
+      <Bounce onPress={onCompose} haptic="medium" scaleTo={0.92} style={styles.cell} accessibilityLabel="Share a moment">
         <View>
           <Avatar uri={me?.avatar} name={me?.name} size={58} />
           <View style={[styles.plus, { backgroundColor: t.accent, borderColor: t.bg }]}>
@@ -34,7 +34,7 @@ export default function StoryRow({ me, people = [], loading, onCompose, onOpenPr
           </View>
         </View>
         <Text style={[type.caption, { color: t.textSecondary, marginTop: 7 }]} numberOfLines={1}>
-          Your pour
+          Your moment
         </Text>
       </Bounce>
 

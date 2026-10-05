@@ -44,7 +44,7 @@ const EMPTY = {
   ratings: {
     icon: 'sparkles-outline',
     title: 'Notes worth keeping',
-    body: 'The best pours are the ones you remember. Jot down what caught your nose.',
+    body: 'The best moments are the ones you remember. Jot down what caught your nose.',
   },
   collection: {
     icon: 'library-outline',
@@ -232,7 +232,7 @@ export default function TasteScreen({ navigation }) {
       >
         <Header
           title="Your taste"
-          subtitle="A book of the pours you love"
+          subtitle="A book of the moments you love"
           onBack={() => navigation.goBack()}
           large
           border={false}

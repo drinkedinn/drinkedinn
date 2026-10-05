@@ -60,7 +60,7 @@ export default function CreateGroupScreen({ navigation }) {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [drink, setDrink] = useState('🥃');
+  const [drink, setDrink] = useState('✨');
   const [creating, setCreating] = useState(false);
   const nameRef = useRef(null);
 

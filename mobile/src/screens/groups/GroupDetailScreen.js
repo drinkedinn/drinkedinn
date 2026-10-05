@@ -261,7 +261,7 @@ export default function GroupDetailScreen({ navigation, route }) {
     const blockHost = () => {
       Alert.alert(
         `Block ${hostName}?`,
-        `You won't see ${hostName}'s pours or the rooms they host, and they won't see yours.`,
+        `You won't see ${hostName}'s moments or the rooms they host, and they won't see yours.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -319,7 +319,7 @@ export default function GroupDetailScreen({ navigation, route }) {
           <Text
             style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginLeft: 16, marginBottom: 8 }]}
           >
-            Recent pours
+            Recent moments
           </Text>
         )}
       </View>
@@ -394,7 +394,7 @@ export default function GroupDetailScreen({ navigation, route }) {
             posts.length === 0 && group ? (
               <EmptyState
                 icon="wine-outline"
-                title="Nothing poured yet"
+                title="Nothing shared yet"
                 body={
                   isMember
                     ? 'Be the first to share a moment with this group.'

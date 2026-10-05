@@ -20,7 +20,7 @@ export default function FeaturedCard({ post, onPress }) {
     <View style={{ marginBottom: 18 }}>
       <View style={styles.labelRow}>
         <Icon name="trophy" size={14} color={t.accent} />
-        <Text style={[type.overline, { color: t.accent, textTransform: 'uppercase' }]}>Pour of the day</Text>
+        <Text style={[type.overline, { color: t.accent, textTransform: 'uppercase' }]}>Moment of the day</Text>
       </View>
 
       <Bounce onPress={() => onPress?.(post)} haptic="light" scaleTo={0.98}>
@@ -65,7 +65,7 @@ export default function FeaturedCard({ post, onPress }) {
               <Text style={[type.caption, { color: t.textMuted }]}>{post.comment_count || 0}</Text>
             </View>
             <View style={{ flex: 1 }} />
-            <Text style={[type.caption, { color: t.accent, fontWeight: '600' }]}>Read pour</Text>
+            <Text style={[type.caption, { color: t.accent, fontWeight: '600' }]}>Read moment</Text>
             <Icon name="arrow-forward" size={13} color={t.accent} />
           </View>
         </View>

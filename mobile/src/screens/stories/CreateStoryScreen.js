@@ -43,7 +43,7 @@ export default function CreateStoryScreen({ navigation }) {
 
   const [image, setImage] = useState(null);
   const [caption, setCaption] = useState('');
-  const [drink, setDrink] = useState('🍹');
+  const [drink, setDrink] = useState('✨');
   const [uploading, setUploading] = useState(0);
   const [posting, setPosting] = useState(false);
   const [showDrinks, setShowDrinks] = useState(false);

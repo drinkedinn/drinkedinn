@@ -1,6 +1,6 @@
 // src/screens/explore/useExploreUserActions.js
 // Report / block for a *member* — the person rows in search results and in the
-// "People to pour with" rail.
+// "People to follow" rail.
 //
 // A profile row is user-generated content too (name, title, photo), and the
 // profile screen it links to has no reporting path of its own, so the

@@ -60,7 +60,7 @@ export default function PrivacyScreen({ navigation }) {
   const startDelete = () => {
     Alert.alert(
       'Delete account',
-      'This permanently erases your profile, pours, comments, photos and connections. It cannot be undone.',
+      'This permanently erases your profile, moments, comments, photos and connections. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Continue', style: 'destructive', onPress: () => setConfirming(true) },

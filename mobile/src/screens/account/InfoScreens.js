@@ -10,7 +10,7 @@ import { Screen, Header, Icon } from '../../components/ui';
 import { SettingsGroup, SettingsRow } from '../../components/SettingsRow';
 
 const FAQ = [
-  { q: 'What counts as a “pour”?', a: 'Anything you’re drinking — a dram, a pint, a natural wine, or a very serious coffee. Share it with a note and a photo.' },
+  { q: 'What counts as a “moment”?', a: 'Anything you’re drinking — a dram, a pint, a natural wine, or a very serious coffee. Share it with a note and a photo.' },
   { q: 'Why do I need to verify my email?', a: 'It keeps the bar free of bots and lets us send you a password reset if you ever need one.' },
   { q: 'How do streaks work?', a: 'A streak counts consecutive days you take part in the community — posting, cheering, commenting. It never counts how much you drink.' },
   { q: 'Can I use DrinkedInn without drinking?', a: 'Absolutely. Mocktails, coffee, and kombucha are all welcome. Nobody is checking your glass.' },

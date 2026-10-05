@@ -43,7 +43,7 @@ import track from '../../lib/track';
 
 const TABS = [
   { key: 'people', label: 'People' },
-  { key: 'pours', label: 'Pours' },
+  { key: 'pours', label: 'Moments' },
 ];
 
 // Routes Explore links out to. Several are owned by other modules, so each is
@@ -341,7 +341,7 @@ export default function ExploreScreen({ navigation }) {
       case 'people':
         return (
           <View style={{ marginBottom: 22 }}>
-            <SectionHeader title="People to pour with" subtitle="Faces worth a first round" />
+            <SectionHeader title="People to follow" subtitle="Faces worth a first round" />
             {item.items.map((person) => (
               <PersonRowWithActions
                 key={String(person.id)}
@@ -400,14 +400,14 @@ export default function ExploreScreen({ navigation }) {
             ref={inputRef}
             value={q}
             onChangeText={setQ}
-            placeholder="Search people and pours"
+            placeholder="Search people and moments"
             placeholderTextColor={t.textMuted}
             style={{ flex: 1, color: t.text, fontSize: 15.5, paddingVertical: 12 }}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
             onSubmitEditing={() => Keyboard.dismiss()}
-            accessibilityLabel="Search people and pours"
+            accessibilityLabel="Search people and moments"
           />
           {searching ? (
             <ActivityIndicator size="small" color={t.textMuted} />

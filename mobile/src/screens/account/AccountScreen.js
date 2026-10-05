@@ -105,7 +105,7 @@ export default function AccountScreen({ navigation }) {
         {/* Stats */}
         <View style={styles.stats}>
           <StatTile value={user?.connections} label="Connections" icon="people-outline" />
-          <StatTile value={user?.postCount} label="Pours" icon="wine-outline" />
+          <StatTile value={user?.postCount} label="Moments" icon="wine-outline" />
           <StatTile value={user?.current_streak} label="Day streak" icon="flame-outline" />
         </View>
 

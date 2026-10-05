@@ -116,7 +116,7 @@ export default function CollectionPillar({
         title={isMe ? 'The shelf is empty' : 'Nothing on the shelf yet'}
         body={
           isMe
-            ? 'Add the ones you’d pour for a friend — the shelf is really a list of stories you can hand someone.'
+            ? 'Add the ones you’d moment for a friend — the shelf is really a list of stories you can hand someone.'
             : 'When they add to their shelf, it shows up here.'
         }
         actionLabel={isMe ? 'Add a bottle' : undefined}
@@ -135,7 +135,7 @@ export default function CollectionPillar({
 
       <SectionHeading
         title="The shelf"
-        caption={`${plural(list.length, 'bottle')} worth pouring for someone`}
+        caption={`${plural(list.length, 'favourite')} worth sharing with someone`}
         actionLabel={isMe ? 'Add' : undefined}
         onAction={isMe ? () => navigateByName(navigation, 'AddBottle') : undefined}
       />

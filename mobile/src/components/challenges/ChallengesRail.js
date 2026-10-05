@@ -53,7 +53,7 @@ function MiniCard({ challenge, onOpen }) {
         ]}
       >
         <View style={[styles.miniEmoji, { backgroundColor: t.accentSoft, borderColor: t.accentBorder }]}>
-          <Text style={{ fontSize: 22 }} accessible={false}>{challenge?.drink_emoji || '🥃'}</Text>
+          <Text style={{ fontSize: 22 }} accessible={false}>{challenge?.drink_emoji || '✨'}</Text>
         </View>
         <Text style={[type.h3, { color: t.text, marginTop: 12 }]} numberOfLines={2}>
           {challenge?.title || 'Discovery challenge'}

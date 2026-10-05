@@ -17,7 +17,7 @@ export default function StoryRow({ me, people = [], onOpenProfile }) {
           <Avatar uri={me?.avatar} name={me?.name} size={58} />
           <View style={styles.plus}><Text style={styles.plusText}>+</Text></View>
         </View>
-        <Text style={styles.label} numberOfLines={1}>Your pour</Text>
+        <Text style={styles.label} numberOfLines={1}>Your moment</Text>
       </View>
 
       {people.map((p) => (

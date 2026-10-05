@@ -10,14 +10,14 @@ import { Screen, Icon, Avatar, Bounce, EmptyState, FadeIn, useToast } from '../c
 import { Shimmer } from '../components/ui/Skeleton';
 
 const KIND = {
-  cheer: { verb: 'cheered your pour', icon: 'beer', tint: 'accent' },
-  repour: { verb: 'repoured your pour', icon: 'repeat', tint: 'success' },
-  comment: { verb: 'commented on your pour', icon: 'chatbubble', tint: 'blue' },
+  cheer: { verb: 'cheered your moment', icon: 'heart', tint: 'accent' },
+  repour: { verb: 'reshared your moment', icon: 'repeat', tint: 'success' },
+  comment: { verb: 'commented on your moment', icon: 'chatbubble', tint: 'blue' },
   reply: { verb: 'replied to you', icon: 'chatbubble-ellipses', tint: 'blue' },
   connect: { verb: 'connected with you', icon: 'person-add', tint: 'blue' },
   follow: { verb: 'connected with you', icon: 'person-add', tint: 'blue' },
   mention: { verb: 'mentioned you', icon: 'at', tint: 'blue' },
-  potd: { verb: 'featured your pour', icon: 'trophy', tint: 'accent' },
+  potd: { verb: 'featured your moment', icon: 'trophy', tint: 'accent' },
   challenge: { verb: 'posted a challenge update', icon: 'flag', tint: 'accent' },
 };
 

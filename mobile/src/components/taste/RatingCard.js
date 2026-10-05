@@ -29,7 +29,7 @@ export default function RatingCard({ item, onDelete }) {
   const chev = useRef(new Animated.Value(0)).current;
 
   const hasNotes = !!(item?.nose || item?.palate || item?.finish);
-  const name = item?.drink_name || 'Unnamed pour';
+  const name = item?.drink_name || 'Unnamed';
   const meta = [item?.drink_type, item?.distillery].filter(Boolean).join(' · ');
   const score = Number(item?.rating) || 0;
 

@@ -205,7 +205,7 @@ export default function ConversationsScreen({ navigation }) {
             errored ? (
               <EmptyState
                 icon="cloud-offline-outline"
-                title="We couldn't pour that in"
+                title="We couldn't moment that in"
                 body="Pull down to try again."
               />
             ) : (

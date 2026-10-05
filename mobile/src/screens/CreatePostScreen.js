@@ -69,7 +69,7 @@ export default function CreatePostScreen({ navigation }) {
   const toast = useToast();
 
   const [content, setContent] = useState('');
-  const [drink, setDrink] = useState('🥃');
+  const [drink, setDrink] = useState('✨');
   const [location, setLocation] = useState('');
   const [showLocation, setShowLocation] = useState(false);
   const [image, setImage] = useState(null);
@@ -87,7 +87,7 @@ export default function CreatePostScreen({ navigation }) {
         if (raw) {
           const d = JSON.parse(raw);
           setContent(d.content || '');
-          setDrink(d.drink || '🥃');
+          setDrink(d.drink || '✨');
           setLocation(d.location || '');
           setShowLocation(!!d.location);
           if (d.poll) setPoll(d.poll);
@@ -166,7 +166,7 @@ export default function CreatePostScreen({ navigation }) {
         const form = new FormData();
         form.append('image', {
           uri: image.uri,
-          name: image.fileName || `pour-${Date.now()}.jpg`,
+          name: image.fileName || `moment-${Date.now()}.jpg`,
           type: image.mimeType || 'image/jpeg',
         });
         const up = await api.post('/upload', form, {
@@ -188,7 +188,7 @@ export default function CreatePostScreen({ navigation }) {
       });
 
       await AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
-      toast?.show('Poured. 🥂', 'success');
+      toast?.show('Shared. ✨', 'success');
       navigation.goBack();
     } catch (e) {
       toast?.show(e.safeMessage || 'Could not share that.', 'error');
@@ -206,7 +206,7 @@ export default function CreatePostScreen({ navigation }) {
         <Pressable onPress={close} hitSlop={12} accessibilityLabel="Close composer">
           <Text style={[type.body, { color: t.textSecondary }]}>Cancel</Text>
         </Pressable>
-        <Text style={[type.h3, { color: t.text }]}>New pour</Text>
+        <Text style={[type.h3, { color: t.text }]}>New moment</Text>
         <Button label="Share" size="sm" onPress={submit} loading={posting} disabled={!canPost} />
       </View>
 
@@ -277,7 +277,7 @@ export default function CreatePostScreen({ navigation }) {
               <TextInput
                 value={location}
                 onChangeText={setLocation}
-                placeholder="Where are you pouring?"
+                placeholder="Where are you?"
                 placeholderTextColor={t.textMuted}
                 maxLength={60}
                 style={{ flex: 1, color: t.text, fontSize: 15, paddingVertical: 2 }}

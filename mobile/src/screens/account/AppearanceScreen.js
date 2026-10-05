@@ -40,7 +40,7 @@ export default function AppearanceScreen({ navigation }) {
       <Header title="Appearance" onBack={() => navigation.goBack()} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 60 }}>
         <Text style={[type.body, { color: t.textSecondary, marginBottom: 20, lineHeight: 21 }]}>
-          Pick how DrinkedInn looks. Light is the default — dark suits late pours.
+          Pick how DrinkedInn looks. Light is the default — dark suits late nights.
         </Text>
 
         <View style={{ flexDirection: 'row', gap: 12 }}>

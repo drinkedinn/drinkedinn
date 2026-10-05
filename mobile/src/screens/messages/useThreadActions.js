@@ -59,7 +59,7 @@ export default function useThreadActions({ userId, name, onBlocked } = {}) {
     if (!userId) return;
     Alert.alert(
       `Block ${who}?`,
-      `You won't see ${who}'s messages or pours, and they won't see yours. Any connection between you is removed.`,
+      `You won't see ${who}'s messages or moments, and they won't see yours. Any connection between you is removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {

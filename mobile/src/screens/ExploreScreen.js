@@ -22,7 +22,7 @@ import { navigateByName } from '../lib/nav';
 
 const TABS = [
   { key: 'people', label: 'People' },
-  { key: 'pours', label: 'Pours' },
+  { key: 'pours', label: 'Moments' },
 ];
 
 export default function ExploreScreen({ navigation }) {
@@ -114,7 +114,7 @@ export default function ExploreScreen({ navigation }) {
             ref={inputRef}
             value={q}
             onChangeText={setQ}
-            placeholder="Search people and pours"
+            placeholder="Search people and moments"
             placeholderTextColor={t.textMuted}
             style={{ flex: 1, color: t.text, fontSize: 15.5, paddingVertical: 12 }}
             autoCapitalize="none"
@@ -228,7 +228,7 @@ export default function ExploreScreen({ navigation }) {
               </View>
 
               <Text style={[type.overline, { color: t.textMuted, textTransform: 'uppercase', marginLeft: 16, marginBottom: 8 }]}>
-                People to pour with
+                People to follow
               </Text>
             </View>
           ) : null

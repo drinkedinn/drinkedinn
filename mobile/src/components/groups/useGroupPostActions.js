@@ -41,7 +41,7 @@ export default function useGroupPostActions({ onRemoved } = {}) {
 
   const chooseReason = useCallback(
     async (post) => {
-      const key = await showReportSheet({ title: "Report this pour — what's wrong with it?", reasons: REASONS });
+      const key = await showReportSheet({ title: "Report this moment — what's wrong with it?", reasons: REASONS });
       if (key) submitReport(post, key);
     },
     [submitReport]
@@ -52,7 +52,7 @@ export default function useGroupPostActions({ onRemoved } = {}) {
       const name = post?.name || 'this member';
       Alert.alert(
         `Block ${name}?`,
-        `You won't see ${name}'s pours, and they won't see yours. Any connection between you is removed.`,
+        `You won't see ${name}'s moments, and they won't see yours. Any connection between you is removed.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -82,7 +82,7 @@ export default function useGroupPostActions({ onRemoved } = {}) {
       if (post.user_id === user?.id) return;
 
       Alert.alert(post.name || 'Options', null, [
-        { text: 'Report this pour', onPress: () => chooseReason(post) },
+        { text: 'Report this moment', onPress: () => chooseReason(post) },
         {
           text: `Block ${post.name || 'this member'}`,
           style: 'destructive',

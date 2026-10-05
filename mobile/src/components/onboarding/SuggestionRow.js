@@ -37,7 +37,7 @@ export default function SuggestionRow({ person, following, onChange }) {
   const meta = [
     person.title || null,
     followers > 0 ? `${followers} follower${followers === 1 ? '' : 's'}` : null,
-    posts > 0 ? `${posts} pour${posts === 1 ? '' : 's'}` : null,
+    posts > 0 ? `${posts} moment${posts === 1 ? '' : 's'}` : null,
   ].filter(Boolean).join(' · ');
 
   return (

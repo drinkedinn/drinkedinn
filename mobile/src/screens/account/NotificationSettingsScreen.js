@@ -8,7 +8,7 @@ import { SettingsGroup, SettingsRow } from '../../components/SettingsRow';
 import { enablePush, disablePush, pushSupported, getPermissionStatus } from '../../lib/pushNotifications';
 
 const ITEMS = [
-  { key: 'cheers', icon: 'beer-outline', label: 'Cheers on your pours' },
+  { key: 'cheers', icon: 'heart-outline', label: 'Cheers on your moments' },
   { key: 'comments', icon: 'chatbubble-outline', label: 'Comments and replies' },
   { key: 'connections', icon: 'people-outline', label: 'New connections' },
   { key: 'messages', icon: 'mail-outline', label: 'Direct messages' },

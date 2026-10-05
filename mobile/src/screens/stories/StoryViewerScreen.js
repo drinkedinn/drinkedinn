@@ -284,7 +284,7 @@ export default function StoryViewerScreen({ navigation, route }) {
     const name = currentStory.name || 'this member';
     Alert.alert(
       `Block ${name}?`,
-      `You won't see ${name}'s pours or moments, and they won't see yours.`,
+      `You won't see ${name}'s moments or moments, and they won't see yours.`,
       [
         { text: 'Cancel', style: 'cancel', onPress: () => resume() },
         {

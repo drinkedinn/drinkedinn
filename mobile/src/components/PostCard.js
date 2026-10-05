@@ -188,7 +188,7 @@ function PostCard({ post, onOpen, onProfile, onReport }) {
             already drew a heart, so the button and its own animation disagreed. */}
         <ActionButton icon="heart-outline" activeIcon="heart" label={count} caption="Cheers" active={cheered} activeColor={t.accent} onPress={() => cheer(false)} scale={likeScale} />
         <ActionButton icon="chatbubble-outline" activeIcon="chatbubble" label={post.comment_count || 0} caption="Comments" activeColor={t.text} onPress={() => onOpen?.(post)} />
-        <ActionButton icon="repeat-outline" activeIcon="repeat" label={repourCount} caption="Repours" active={repoured} activeColor={t.success} onPress={repour} />
+        <ActionButton icon="repeat-outline" activeIcon="repeat" label={repourCount} caption="Reshares" active={repoured} activeColor={t.success} onPress={repour} />
         <View style={{ flex: 1 }} />
         <ActionButton icon="bookmark-outline" activeIcon="bookmark" caption="Save" active={saved} activeColor={t.accent} onPress={() => setSaved((s) => !s)} />
         <ActionButton icon="share-outline" activeIcon="share" caption="Share" activeColor={t.text} onPress={share} />

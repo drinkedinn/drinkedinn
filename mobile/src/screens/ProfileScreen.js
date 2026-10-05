@@ -182,7 +182,7 @@ export default function ProfileScreen({ navigation, route }) {
         <View style={[styles.stats, { backgroundColor: t.surface, borderColor: t.border }, elevation(t, 1)]}>
           <Stat value={profile.connections} label="Connections" />
           <View style={[styles.div, { backgroundColor: t.divider }]} />
-          <Stat value={profile.posts?.length} label="Pours" />
+          <Stat value={profile.posts?.length} label="Moments" />
           <View style={[styles.div, { backgroundColor: t.divider }]} />
           <Stat value={profile.longest_streak} label="Best streak" />
         </View>

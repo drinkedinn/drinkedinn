@@ -229,7 +229,7 @@ export default function InviteScreen({ navigation }) {
       const name = leader.name || 'this member';
       Alert.alert(
         `Block ${name}?`,
-        `You won't see ${name}'s pours, and they won't see yours. Any connection between you is removed.`,
+        `You won't see ${name}'s moments, and they won't see yours. Any connection between you is removed.`,
         [
           { text: 'Cancel', style: 'cancel' },
           {

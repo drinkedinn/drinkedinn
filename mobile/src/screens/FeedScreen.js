@@ -244,7 +244,7 @@ export default function FeedScreen({ navigation }) {
               <EmptyState
                 icon="people-outline"
                 title="Your round is quiet"
-                body="Connect with a few people and their pours will land here."
+                body="Connect with a few people and their moments will land here."
                 actionLabel="Find people"
                 onAction={() => navigateByName(navigation, 'Explore')}
               />
@@ -253,7 +253,7 @@ export default function FeedScreen({ navigation }) {
                 icon="wine-outline"
                 title="The bar's just opened"
                 body="Be the first to share a moment worth remembering."
-                actionLabel="Share a pour"
+                actionLabel="Share a moment"
                 onAction={() => navigation.navigate('Compose')}
               />
             )
@@ -261,13 +261,13 @@ export default function FeedScreen({ navigation }) {
         />
       )}
 
-      {/* New pours pill */}
+      {/* New moments pill */}
       {newCount > 0 && (
         <FadeIn distance={-10}>
           <Pressable onPress={showNew} style={[styles.newPill, { backgroundColor: t.accent }]} accessibilityRole="button">
             <Icon name="arrow-up" size={14} color={t.textOnAccent} />
             <Text style={{ color: t.textOnAccent, fontWeight: '700', fontSize: 13 }}>
-              {newCount} new pour{newCount > 1 ? 's' : ''}
+              {newCount} new moment{newCount > 1 ? 's' : ''}
             </Text>
           </Pressable>
         </FadeIn>
